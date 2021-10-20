@@ -1,7 +1,7 @@
 ###################################
 # Author: Julia Chifman
 # Contact: chifman@american.edu
-# Version: 0.1
+# Version: 1.0
 # Year: 2021
 ###################################
 
@@ -13,7 +13,6 @@ library(gplots)
 library(DT)
 library(RColorBrewer)
 library(ComplexHeatmap)
-#library(InteractiveComplexHeatmap)
 library(survival)
 library(survminer)
 library(dplyr)
@@ -21,86 +20,77 @@ library(ggfortify)
 library(gridExtra)
 library(textshape)
 library(patchwork)
-#library(plotly)
 
-
+# max size of file upload
 options(shiny.maxRequestSize=1000*1024^2)
 options(htmlwidgets.TOJSON_ARGS = list(na = 'string'))
 
-# brks_pval_t1 <- seq(0, 1, 0.01)
-# clrs_pval_t1 <- colorRampPalette(c("#A8DAFB", "#69C1FA"))(length(brks_pval_t1) + 1)
-# 
-# brks_hr_t1 <- seq(0, 4, 0.05)
-# clrs_hr_t1 <- colorRampPalette(c("#A8DAFB", "#69C1FA"))(length(brks_hr_t1) + 1)
-# 
-# brks_pval_t2 <- seq(0, 1, 0.01)
-# clrs_pval_t2 <- colorRampPalette(c("#E1ECEB", "#C4D6D4"))(length(brks_pval_t1) + 1)
-# 
-# brks_hr_t2 <- seq(0, 4, 0.05)
-# clrs_hr_t2 <- colorRampPalette(c("#E1ECEB", "#C4D6D4"))(length(brks_hr_t1) + 1)
-# 
-# brks_pval_t3 <- seq(0, 1, 0.01)
-# clrs_pval_t3 <- colorRampPalette(c("#FCD3C3", "#E1906F"))(length(brks_pval_t1) + 1)
-# 
-# brks_hr_t3 <- seq(0, 4, 0.05)
-# clrs_hr_t3 <- colorRampPalette(c("#FCD3C3", "#E1906F"))(length(brks_hr_t1) + 1)
-
-#Parallel processing
-# n.cores<-parallel::detectCores()-1
-# constru.cluster<-parallel::makeCluster(
-#   n.cores,
-#   type="PSOCK"
-# )
-# doParallel::registerDoParallel(cl=constru.cluster)
-
+# define main function constru()
+# this function will take on three files that were uploaded by the user
+# the files are: 
+# (1) clinical data -- rows are patient ids and two of the columns must be 
+# labeled for now as OS_Time and OS_Event. I will adjust this and make it smarter.
+# (2) gene expression data -- columns should be patient ids and rows 
+# gene identifiers (ids or gene names). Patient ids must match between clinical 
+# and gene expression data.
+# (3) metagene mean values. Users upload either gene ids/names and then app
+# makes a metagene or upload metagene mean values. 
 
 constru<-function(clinical, gene_data, metagene_mean)
 {
-  #Get Surv object. need to make it smart. 
+  # make surv object
   clinical_surv<-Surv(clinical$OS_Time, clinical$OS_Event)
-  #clinical_surv<-Surv(clinical$OS_Time_8YR, clinical$OS_Event_8YR)
   
-  # convert matrix to a numeric vector of values
-  #metagene_mean<-as.numeric(metagene_mean)
-  
-  #Split metagene into tertiles
+  # create a categorical vector for metagene holding 3 values High, Med and Low
   metagene_tertiles<-as.numeric(metagene_mean)
   metagene_tertiles[metagene_mean <= quantile(metagene_mean,1:3/3)[[3]]]<-"High"
   metagene_tertiles[metagene_mean <= quantile(metagene_mean,1:3/3)[[2]]]<-"Med"
   metagene_tertiles[metagene_mean <= quantile(metagene_mean,1:3/3)[[1]]]<-"Low"
   
-  metagene_mean_low<-metagene_mean[metagene_tertiles %in% c("Low")]
-  metagene_mean_med<-metagene_mean[metagene_tertiles %in% c("Med")]
-  metagene_mean_high<-metagene_mean[metagene_tertiles %in% c("High")]
+  # Subset tertiles based on Low, med or High
+  # metagene_mean_low<-metagene_mean[metagene_tertiles %in% c("Low")]
+  # metagene_mean_med<-metagene_mean[metagene_tertiles %in% c("Med")]
+  # metagene_mean_high<-metagene_mean[metagene_tertiles %in% c("High")]
   
-  #Define empty vector to hols tertiles for each gene in gene_data
+  # Define empty vector to hold tertiles for each gene in gene_data
   gene_factors<-c()
   
-  y<-c("mean", "P5%", "P95%", "Diff P95%_5%", "R", "PS1", "PS2","PS3", "gT1 Pval","gT1 HR", "gT1sT1", "gT1sT1 3 year", "gT1sT1 6 year",
-                                                              "gT1sT2", "gT1sT2 3 year", "gT1sT2 6 year",
-                                                              "gT1sT3", "gT1sT3 3 year", "gT1sT3 6 year",
-                                                              "gT2 Pval","gT2 HR", "gT2sT1", "gT2sT1 3 year", "gT2sT1 6 year",
-                                                              "gT2sT2", "gT2sT2 3 year", "gT2sT2 6 year",
-                                                              "gT2sT3", "gT2sT3 3 year", "gT2sT3 6 year",
-                                                              "gT3 Pval","gT3 HR", "gT3sT1", "gT3sT1 3 year", "gT3sT1 6 year",
-                                                              "gT3sT2", "gT3sT2 3 year", "gT3sT2 6 year",
-                                                              "gT3sT3", "gT3sT3 3 year", "gT3sT3 6 year")
-  #y<-c("gT1_Cox_Pval","gT1_Cox_HR")
-  df <- data.frame(row.names = NULL, matrix(ncol = length(y), nrow = 0))
-  colnames(df) <- y
+  # Define column names for the table that will hold results of constru
+  column_names<-c("mean", "P5%", "P95%", "Diff P95%_5%", "R", "PS1", "PS2","PS3", 
+       "gT1 Pval","gT1 HR", "gT1sT1", "gT1sT1 3 year", "gT1sT1 6 year",
+       "gT1sT2", "gT1sT2 3 year", "gT1sT2 6 year", "gT1sT3", "gT1sT3 3 year", 
+       "gT1sT3 6 year", "gT2 Pval","gT2 HR", "gT2sT1", "gT2sT1 3 year", 
+       "gT2sT1 6 year", "gT2sT2", "gT2sT2 3 year", "gT2sT2 6 year", "gT2sT3", 
+       "gT2sT3 3 year", "gT2sT3 6 year", "gT3 Pval","gT3 HR", "gT3sT1", 
+       "gT3sT1 3 year", "gT3sT1 6 year", "gT3sT2", "gT3sT2 3 year", 
+       "gT3sT2 6 year", "gT3sT3", "gT3sT3 3 year", "gT3sT3 6 year")
   
-  #df<-foreach(k=1:nrow(gene_data), .combine = "rbind")%dopar%
+  # Define a data frame that will hold the results of the constru and 
+  # assign column names
+  df <- data.frame(row.names = NULL, 
+                   matrix(ncol = length(column_names), nrow = 0))
+  colnames(df) <- column_names
+  
+  # main for loop to compute the results
   for (k in 1:nrow(gene_data)) 
-  {    
+  { 
+    # Tells users which gene is being processed 
     incProgress(1/nrow(gene_data), detail = paste("Getting results for gene", k))
+    
+    # Create a vector to hold values for gene k
     hold <- as.numeric(gene_data[k,])
     
+    # do constru only on genes that have less than 33% of zero entries
     if (100*length(which(hold==0))/length(hold) < 33)
     {
+      # create tertiles for gene k
       gene_factors[gene_data[k,] <= quantile(hold, 1:3/3)[[3]]] <- "High"
       gene_factors[gene_data[k,] <= quantile(hold, 1:3/3)[[2]]] <- "Med"
       gene_factors[gene_data[k,] <= quantile(hold, 1:3/3)[[1]]] <- "Low"
       
+      # subset metagene names/values based on gene k tertiles
+      # subset clinical data based on gene k tertiles 
+      # and run coxph() on each subset
       metagene_low <- metagene_mean[gene_factors %in% c("Low")]
       metagene_med <- metagene_mean[gene_factors %in% c("Med")]
       metagene_high <- metagene_mean[gene_factors %in% c("High")]
@@ -113,18 +103,34 @@ constru<-function(clinical, gene_data, metagene_mean)
       cox_med <- coxph(clinical_med ~ as.numeric(metagene_med))
       cox_high <- coxph(clinical_high ~ as.numeric(metagene_high))
       
+      # now take metagene categorical vector consisting of -- Low, Med and High
+      # this vector was created earlier
+      # and subset based on gene k tertiles
+      # run survfit on each subset
       metagene_tertiles_low<-metagene_tertiles[gene_factors %in% c("Low")]
       metagene_tertiles_med<-metagene_tertiles[gene_factors %in% c("Med")]
       metagene_tertiles_high<-metagene_tertiles[gene_factors %in% c("High")]
       
-      surv_fit_low<-survfit(clinical_low~metagene_tertiles_low, type="kaplan-meier", conf.type="log")
-      surv_fit_med<-survfit(clinical_med~metagene_tertiles_med, type="kaplan-meier", conf.type="log")
-      surv_fit_high<-survfit(clinical_high~metagene_tertiles_high, type="kaplan-meier", conf.type="log")
+      surv_fit_low<-survfit(clinical_low~metagene_tertiles_low, 
+                            type="kaplan-meier", conf.type="log")
+      surv_fit_med<-survfit(clinical_med~metagene_tertiles_med, 
+                            type="kaplan-meier", conf.type="log")
+      surv_fit_high<-survfit(clinical_high~metagene_tertiles_high, 
+                             type="kaplan-meier", conf.type="log")
       
+      # write results for gene k 
       df[k,] <- c(mean(hold), quantile(hold, c(0.05)), quantile(hold, c(0.95)), 
                   quantile(hold, c(0.95)) - quantile(hold, c(0.05)),
                   cor(hold, as.numeric(metagene_mean), method="pearson"),
                   
+                  # next three blocks of lines are parity scores 
+                  # and they need some additional work
+                  # they include only P-val and HR of the low/high tertiles
+                  # I think gene-k variability and gene-k correlation to the
+                  # metagene are also should be part of the parity score,
+                  # if we want to extract new metagene for the user without 
+                  # the user going through the table themselves. Some users
+                  # might prefer to have new metagene being pre-selected. 
                   (-log10(summary(cox_low)$coef[5])/summary(cox_low)$coef[2])-
                     (-log10(summary(cox_high)$coef[5])/summary(cox_high)$coef[2]),
                   
@@ -136,7 +142,8 @@ constru<-function(clinical, gene_data, metagene_mean)
                   
                   summary(cox_low)$coef[5],summary(cox_low)$coef[2], 
                   
-                  if(tryCatch(surv_fit_low["metagene_tertiles_low=Low"]$n, error=function(err) 0) !=0)
+                  if(tryCatch(surv_fit_low["metagene_tertiles_low=Low"]$n, 
+                              error=function(err) 0) !=0)
                   {
                     c(surv_fit_low["metagene_tertiles_low=Low"]$n,
                       summary(surv_fit_low["metagene_tertiles_low=Low"],
@@ -149,7 +156,8 @@ constru<-function(clinical, gene_data, metagene_mean)
                   }
                   ,
                   
-                  if(tryCatch(surv_fit_low["metagene_tertiles_low=Med"]$n, error=function(err) 0) !=0)
+                  if(tryCatch(surv_fit_low["metagene_tertiles_low=Med"]$n, 
+                              error=function(err) 0) !=0)
                   {
                     c(surv_fit_low["metagene_tertiles_low=Med"]$n,
                       summary(surv_fit_low["metagene_tertiles_low=Med"],
@@ -162,7 +170,8 @@ constru<-function(clinical, gene_data, metagene_mean)
                   }
                   ,
                   
-                  if(tryCatch(surv_fit_low["metagene_tertiles_low=High"]$n, error=function(err) 0) !=0)
+                  if(tryCatch(surv_fit_low["metagene_tertiles_low=High"]$n, 
+                              error=function(err) 0) !=0)
                   {
                     c(surv_fit_low["metagene_tertiles_low=High"]$n,
                       summary(surv_fit_low["metagene_tertiles_low=High"],
@@ -177,7 +186,8 @@ constru<-function(clinical, gene_data, metagene_mean)
                   
                   summary(cox_med)$coef[5],summary(cox_med)$coef[2], 
                   
-                  if(tryCatch(surv_fit_med["metagene_tertiles_med=Low"]$n, error=function(err) 0) !=0)
+                  if(tryCatch(surv_fit_med["metagene_tertiles_med=Low"]$n, 
+                              error=function(err) 0) !=0)
                   {
                     c(surv_fit_med["metagene_tertiles_med=Low"]$n,
                       summary(surv_fit_med["metagene_tertiles_med=Low"],
@@ -190,7 +200,8 @@ constru<-function(clinical, gene_data, metagene_mean)
                   }
                   ,
                   
-                  if(tryCatch(surv_fit_med["metagene_tertiles_med=Med"]$n, error=function(err) 0) !=0)
+                  if(tryCatch(surv_fit_med["metagene_tertiles_med=Med"]$n, 
+                              error=function(err) 0) !=0)
                   {
                     c(surv_fit_med["metagene_tertiles_med=Med"]$n,
                       summary(surv_fit_med["metagene_tertiles_med=Med"],
@@ -203,7 +214,8 @@ constru<-function(clinical, gene_data, metagene_mean)
                   }
                   ,
                   
-                  if(tryCatch(surv_fit_med["metagene_tertiles_med=High"]$n, error=function(err) 0) !=0)
+                  if(tryCatch(surv_fit_med["metagene_tertiles_med=High"]$n, 
+                              error=function(err) 0) !=0)
                   {
                     c(surv_fit_med["metagene_tertiles_med=High"]$n,
                       summary(surv_fit_med["metagene_tertiles_med=High"],
@@ -218,7 +230,8 @@ constru<-function(clinical, gene_data, metagene_mean)
                   
                   summary(cox_high)$coef[5],summary(cox_high)$coef[2], 
                   
-                  if(tryCatch(surv_fit_high["metagene_tertiles_high=Low"]$n, error=function(err) 0) !=0)
+                  if(tryCatch(surv_fit_high["metagene_tertiles_high=Low"]$n, 
+                              error=function(err) 0) !=0)
                   {
                     c(surv_fit_high["metagene_tertiles_high=Low"]$n,
                       summary(surv_fit_high["metagene_tertiles_high=Low"],
@@ -231,7 +244,8 @@ constru<-function(clinical, gene_data, metagene_mean)
                   }
                   ,
                   
-                  if(tryCatch(surv_fit_high["metagene_tertiles_high=Med"]$n, error=function(err) 0) !=0)
+                  if(tryCatch(surv_fit_high["metagene_tertiles_high=Med"]$n, 
+                              error=function(err) 0) !=0)
                   {
                     c(surv_fit_high["metagene_tertiles_high=Med"]$n,
                       summary(surv_fit_high["metagene_tertiles_high=Med"],
@@ -244,7 +258,8 @@ constru<-function(clinical, gene_data, metagene_mean)
                   }
                   ,
                   
-                  if(tryCatch(surv_fit_high["metagene_tertiles_high=High"]$n, error=function(err) 0) !=0)
+                  if(tryCatch(surv_fit_high["metagene_tertiles_high=High"]$n, 
+                              error=function(err) 0) !=0)
                   {
                     c(surv_fit_high["metagene_tertiles_high=High"]$n,
                       summary(surv_fit_high["metagene_tertiles_high=High"],
@@ -256,41 +271,8 @@ constru<-function(clinical, gene_data, metagene_mean)
                     c(0,0,0)
                   }
                   ) 
-      # df[k,] <- c(mean(hold), quantile(hold, c(0.05)), quantile(hold, c(0.95)), 
-      #             quantile(hold, c(0.95)) - quantile(hold, c(0.05)),
-      #             cor(hold, as.numeric(metagene_mean), method="pearson"),
-      #             summary(cox_low)$coef[5],summary(cox_low)$coef[2], 
-      #             surv_fit_low$n[2],
-      #             summary(surv_fit_low, time=c(3,6))$surv[3],
-      #             summary(surv_fit_low, time=c(3,6))$surv[4],
-      #             surv_fit_low$n[3],
-      #             summary(surv_fit_low, time=c(3,6))$surv[5],
-      #             summary(surv_fit_low, time=c(3,6))$surv[6],
-      #             surv_fit_low$n[1],
-      #             summary(surv_fit_low, time=c(3,6))$surv[1],
-      #             summary(surv_fit_low, time=c(3,6))$surv[2],
-      #             summary(cox_med)$coef[5],summary(cox_med)$coef[2], 
-      #             surv_fit_med$n[2],
-      #             summary(surv_fit_med, time=c(3,6))$surv[3],
-      #             summary(surv_fit_med, time=c(3,6))$surv[4],
-      #             surv_fit_med$n[3],
-      #             summary(surv_fit_med, time=c(3,6))$surv[5],
-      #             summary(surv_fit_med, time=c(3,6))$surv[6],
-      #             surv_fit_med$n[1],
-      #             summary(surv_fit_med, time=c(3,6))$surv[1],
-      #             summary(surv_fit_med, time=c(3,6))$surv[2],
-      #             summary(cox_high)$coef[5],summary(cox_high)$coef[2], 
-      #             surv_fit_high$n[2],
-      #             summary(surv_fit_high, time=c(3,6))$surv[3],
-      #             summary(surv_fit_high, time=c(3,6))$surv[4],
-      #             surv_fit_high$n[3],
-      #             summary(surv_fit_high, time=c(3,6))$surv[5],
-      #             summary(surv_fit_high, time=c(3,6))$surv[6],
-      #             surv_fit_high$n[1],
-      #             summary(surv_fit_high, time=c(3,6))$surv[1],
-      #             summary(surv_fit_high, time=c(3,6))$surv[2]) 
      }
-     else
+     else # genes with more than 33% of zero's are not part of the computations
      {
        df[k,]<-c(mean(hold), quantile(hold, c(0.05)), quantile(hold, c(0.95)), 
                  quantile(hold, c(0.95)) - quantile(hold, c(0.05)),
@@ -298,7 +280,6 @@ constru<-function(clinical, gene_data, metagene_mean)
                  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
                  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
                  NA, NA, NA, NA, NA)
-       #df[k,]<-c("NA", "NA")
      }
     
   }  
@@ -306,25 +287,24 @@ constru<-function(clinical, gene_data, metagene_mean)
   return(df)
 }
 
-# center_colmeans <- function(x) {
-#   xcenter = colMeans(x)
-#   x - rep(xcenter, rep.int(nrow(x), ncol(x)))
-# }
 
+# apps input
 ui <- fluidPage(
     theme = bslib::bs_theme(bootswatch = "yeti"),
     titlePanel("Constru"),
     tags$style(HTML('table.dataTable tr.selected td, 
-                    table.dataTable td.selected {background-color: #C6BAB8 !important;}')),
+                    table.dataTable td.selected 
+                    {background-color: #C6BAB8 !important;}')),
     
     
     tabsetPanel(
-      
+        # Upload clinical data tab
         tabPanel("Import data", 
                  h4("Upload Clinical Data"),
                  p("Choose a file to upload clinical data. 
                    File should be tab delimited and have a header and row names. 
-                   Row names should be patients ID. Column names should only use standard letters,
+                   Row names should be patients ID. 
+                   Column names should only use standard letters,
                    numbers and no spaces."),
                  fileInput("file1", "Upload file",
                            multiple = FALSE,
@@ -350,29 +330,28 @@ ui <- fluidPage(
                              ".csv")),
         
         h6("Data preview: gene expression"),
-        
-        # Output: Data file ----
         tableOutput("contents2"),
-        # h6("Filter Genes"),
-        # p("If you want to filter out genes with low variability across samples, 
-        #    check the box below."),
-        # checkboxInput("filter", "Filter data"),
         
         # Upload metagene
         # Horizontal line ----
         tags$hr(),
         h4("Upload Gene Signature"),
         p("Choose a file to upload metagene names or metagene mean values in 
-            txt/csv format. Check the appropriate box below before uploading a file."),
-        p("Gene names file: one gene name/id per line."),
-        p("Mean values file: a file containing one row of mean values with columns 
-            labeled by patient IDs.Make sure that patient IDs in clinical and 
-            metagene file are the same."),
+            txt/csv format. Check the appropriate box below before uploading 
+            a file."),
+        p(strong("Gene names file:"), "one gene name/id per line. Gene names must match
+          gene names/ids in your gene expression file. If using this option,
+          then metagene can be visualized by clicking on the tab above labeled", 
+          strong("Visualise metagene.")),
+          
+        p(strong("Mean values file:"), "a file containing one row of mean values 
+          with columns labeled by patient IDs. Make sure that patient IDs in 
+          clinical and metagene file are the same. Label the row contating 
+          mean values as follows:", em("mean_values")),
         
         radioButtons("radio", h3("Choose one button"),
-                     choices = list("Metagene names" = 1, "Metagene mean values" = 2),
+                     choices = list("Gene names file" = 1, "Mean values file" = 2),
                      selected = 1),
-        #radioButtons("means", "Metagene mean values"),
         
         fileInput("file3", "Upload file",
                   multiple = FALSE,
@@ -384,35 +363,18 @@ ui <- fluidPage(
         
         # Output: Data file ----
         tableOutput("contents3"),
-        
-        # Upload metagene
-        # Horizontal line ----
-        # tags$hr(),
-        # h4("Upload Gene Signature mean values: metagene"),
-        # p("Choose a file to upload metagene mean values in txt/csv format."),
-        # fileInput("file4", "Upload file",
-        #           multiple = FALSE,
-        #           accept = c("text/csv",
-        #                      "text/comma-separated-values,text/plain",
-        #                      ".csv")),
-        # h6("Data preview: metagene"),
-        # 
-        # 
-        # # Output: Data file ----
-        # tableOutput("contents4")
         )
     ,
     tabPanel("Visualise metagene",
              h4("Metagene heatmap"),
-             p("This page displays a  heatmap of the metagene and also its average value"),
-             #plotOutput("plot_metagene"),
+             p("This page displays a  heatmap of the metagene and also 
+               its average value"),
              plotOutput("plot_metagene_mean")),
-    
-    #tabPanel("Set parameters"),
     
     tabPanel("Constru results",
              h4("Table"),
-             p("results of the analysis are displayed in the table below. You can sort the table ..."),
+             p("results of the analysis are displayed in the table below."),
+             p("Column names will be defined here ..."),
              # Horizontal line ----
              tags$hr(),
              actionButton("LowT", "Save lowerT genes", style="color: #135ADA; 
@@ -427,16 +389,18 @@ ui <- fluidPage(
                                                                 border-width: 2px"),
              # Horizontal line ----
              tags$hr(),
+             br(),
              DTOutput("constru_out")
-             #tableOutput("constru_out"),
-             # Horizontal line ----
     ),
     
   tabPanel("Constru plots",
-              #h4("Images"),
               fluidRow(class="heatmaps",
-                       column(6, "lowerT Genes", plotOutput("plot_heatmap_lowT", height = "200px"), style = " font-size:25px"),
-                       column(6, "upperT Genes", plotOutput("plot_heatmap_highT", height = "200px" ), style = " font-size:25px")
+                       column(6, "lowerT Genes", 
+                              plotOutput("plot_heatmap_lowT", height = "200px"),
+                              style = " font-size:25px"),
+                       column(6, "upperT Genes", 
+                              plotOutput("plot_heatmap_highT", height = "200px"),
+                              style = " font-size:25px")
                        ),
            
               fluidRow(class="km_plots",
@@ -447,26 +411,19 @@ ui <- fluidPage(
            # Horizontal line ----
            tags$hr(),
              
-              fluidRow(class ="high_low_plots", "(upperT + lowerT) Genes",
+              fluidRow(class ="high_low_plots", "(upperT and lowerT) Genes",
                 plotOutput("plot_heatmap_diffT", height = "300px"),
                 plotOutput("plot_KM_diffT", height = "350px"),
                 style = "font-size:25px"
                 )
-           # tags$head(tags$style("
-           #          .heatmaps{height:200px;}
-           #          .km_plots{height:200px;}
-           #          .high_low_plots{height = 400px;}"
-           # )
-           # )
   ),
   
-              
-    
     tabPanel("Documentation",
              h4("Constru Documentation"),
              p("Some text goes here ... "))
     )
 )
+
 server <- function(input, output, session) {
     thematic::thematic_shiny()
   
@@ -483,47 +440,19 @@ server <- function(input, output, session) {
   
     metagene_mean<-reactive({
       req(input$file3)
-      #read.table(input$file3$datapath, header = FALSE)
         if (input$radio == 1)
         {
          metagene<-read.table(input$file3$datapath, header = FALSE)
          meta_mean<-colMeans(gene_data()[rownames(gene_data()) %in% metagene[,1],])
-         #meta_frame<-data.frame(meta = meta_mean)
          return(meta_mean)
         }
        if (input$radio == 2)
        {
          metagene<-read.table(input$file3$datapath, header = TRUE)
-         #meta_frame<-data.frame(meta = t(metagene))
-         #colnames(meta_frame)<-c("meta")
          return(metagene)
-      #   #   return(colMeans(gene_data()[rownames(gene_data()) %in% metagene[,1],]))
        }
       
     })
-    # 
-    # metagene_names<-reactive({
-    #     req(input$file3)
-    #     read.table(input$file3$datapath, header = FALSE)
-    # })
-    # 
-    # # metagene_expression_data<-reactive({
-    # #   gene_data()[rownames(gene_data()) %in% metagene_names()[,1],]
-    # # })
-    # 
-    # metagene_mean<-reactive({
-    #   colMeans(gene_data()[rownames(gene_data()) %in% metagene_names()[,1],])
-    # })
-    # 
-    # metagene_mean_2<-reactive({
-    #   req(input$file4)
-    #   read.table(input$file4$datapath, header = TRUE)
-    # })
-    
-    # constru_table<-reactive({
-    #   withProgress(message = "Calculation in progress ...",
-    #   constru(clinical(), gene_data(), metagene_mean()))
-    # })
     
     constru_table<-reactive({
       withProgress(message = "Calculation in progress ...",
@@ -548,13 +477,9 @@ server <- function(input, output, session) {
             
         },rownames = FALSE, colnames = FALSE)
         
-        output$contents4 <- renderTable({
-          
-          return(metagene_mean_2()[1:7])
-          
-        },rownames = TRUE)
 
-        # a custom table container
+        # a custom table container that desplays custom column names 
+        # for constru results
         custom_colnames = htmltools::withTags(table(
           class = 'display',
           thead(
@@ -588,22 +513,7 @@ server <- function(input, output, session) {
         ))
         print(custom_colnames)
     
-    # output$plot_metagene <- renderPlot({
-    #     
-    #     heatmap.2(as.matrix(rbind(metagene_expression_data(), metagene_mean())), 
-    #               main="Heatmap of the metagene", 
-    #               Rowv=FALSE, 
-    #               Colv=TRUE, 
-    #               dendrogram = "column", 
-    #               density.info="none", 
-    #               trace="none", 
-    #               scale="row",
-    #               col=brewer.pal(11,"BrBG"), 
-    #               keysize = 1.7,
-    #               labCol = FALSE,
-    #               labRow = c(rownames(metagene_expression_data(), "Mean Value")))
-    # })
-    
+    # visualize metagene via heatmap if names were uploaded
     output$plot_metagene_mean<-renderPlot({
       
       expression_data_subset<-gene_data()[rownames(gene_data()) %in% read.table(input$file3$datapath, header = FALSE)[,1],]
@@ -626,14 +536,7 @@ server <- function(input, output, session) {
 
     })
     
-    # backgroundColor = styleInterval(brks_hr_t3, clrs_hr_t3)
-    #output$constru_out <- renderTable({
-    #   withProgress(message = "Calculation in progress ...", 
-    #                test<-constru(clinical(), gene_data(), metagene_mean())
-    #                )
-    #   return(test)
-    # })
-    
+    # display constru results
     output$constru_out <- renderDT({
     datatable(constru_table(),
     extensions = c("Buttons", "Select"),
@@ -691,16 +594,22 @@ server <- function(input, output, session) {
     
     )
     
-      
+      # get row names (gene ids/names) when user clicks on rows and then button
+      # labeled "Save lowerT genes"
       lowT_data <- eventReactive(input$LowT, {
         gene_data()[rownames(gene_data()) %in% rownames(constru_table()[input$constru_out_rows_selected,]),]
       })
       
+      # get row names (gene ids/names) when user clicks on rows and then button
+      # labeled "Save upperT genes"
       highT_data <- eventReactive(input$HighT, {
         gene_data()[rownames(gene_data()) %in% rownames(constru_table()[input$constru_out_rows_selected,]),]
       })
+    
+      # The rest of the code will be simplified using function() definitions.
+      # For now it is repetitive, but this way I can catch errors better.
       
-#Plot LowT heatmap  
+      # Display LowT genes via heatmap  
     output$plot_heatmap_lowT <- renderPlot({
       
       heatmap_data_means<-data.frame(meta_mean = colMeans(lowT_data()))
@@ -717,11 +626,16 @@ server <- function(input, output, session) {
       heatmap_data_high<-lowT_data()[, colnames(lowT_data()) %in% 
                                           rownames(subset(heatmap_data_means_tert, newcol=="High"))]
       
-      heatmap_data_low_clustered<-cluster_matrix(heatmap_data_low, dim = 'col', method = "average")
-      heatmap_data_med_clustered<-cluster_matrix(heatmap_data_med, dim = 'col', method = "average")
-      heatmap_data_high_clustered<-cluster_matrix(heatmap_data_high, dim = 'col', method = "average")
+      heatmap_data_low_clustered<-cluster_matrix(heatmap_data_low, 
+                                                 dim = 'col', method = "average")
+      heatmap_data_med_clustered<-cluster_matrix(heatmap_data_med, 
+                                                 dim = 'col', method = "average")
+      heatmap_data_high_clustered<-cluster_matrix(heatmap_data_high, 
+                                                  dim = 'col', method = "average")
       
-      heatmap_data_tert<-cbind(heatmap_data_low_clustered,heatmap_data_med_clustered,heatmap_data_high_clustered)
+      heatmap_data_tert<-cbind(heatmap_data_low_clustered,
+                               heatmap_data_med_clustered,
+                               heatmap_data_high_clustered)
       
       
       ht_constru = Heatmap(t(scale(t(heatmap_data_tert))),
@@ -744,6 +658,7 @@ server <- function(input, output, session) {
       draw(ht_constru)
     }) 
     
+    # Display HighT genes via heatmap 
     output$plot_heatmap_highT <- renderPlot({
       
       heatmap_data_means_highT<-data.frame(meta_mean = colMeans(highT_data()))
@@ -760,11 +675,16 @@ server <- function(input, output, session) {
       heatmap_data_high_highT<-highT_data()[, colnames(highT_data()) %in% 
                                        rownames(subset(heatmap_data_means_tert_highT, newcol=="High"))]
       
-      heatmap_data_low_clustered_highT<-cluster_matrix(heatmap_data_low_highT, dim = 'col', method = "average")
-      heatmap_data_med_clustered_highT<-cluster_matrix(heatmap_data_med_highT, dim = 'col', method = "average")
-      heatmap_data_high_clustered_highT<-cluster_matrix(heatmap_data_high_highT, dim = 'col', method = "average")
+      heatmap_data_low_clustered_highT<-cluster_matrix(heatmap_data_low_highT, 
+                                                       dim = 'col', method = "average")
+      heatmap_data_med_clustered_highT<-cluster_matrix(heatmap_data_med_highT, 
+                                                       dim = 'col', method = "average")
+      heatmap_data_high_clustered_highT<-cluster_matrix(heatmap_data_high_highT, 
+                                                        dim = 'col', method = "average")
       
-      heatmap_data_tert_highT<-cbind(heatmap_data_low_clustered_highT,heatmap_data_med_clustered_highT,heatmap_data_high_clustered_highT)
+      heatmap_data_tert_highT<-cbind(heatmap_data_low_clustered_highT,
+                                     heatmap_data_med_clustered_highT,
+                                     heatmap_data_high_clustered_highT)
       
       
       ht_constru_highT = Heatmap(t(scale(t(heatmap_data_tert_highT))),
@@ -780,11 +700,6 @@ server <- function(input, output, session) {
                                                   col=c("#0B3B90", "#717D7E","#D35400"),
                                                   fontsize=16),
                            show_heatmap_legend = FALSE,
-                           # heatmap_legend_param = list(
-                           #   title = "Color key",
-                           #   title_gp = gpar(fontsize = 14),
-                           #   direction = "horizontal",
-                           #   legend_width = unit(75, "mm")),
                            show_row_dend = FALSE,
                            col=colorpanel(32, "#0650d1", "#dcdce6", "#ed4507") 
       )
@@ -792,6 +707,7 @@ server <- function(input, output, session) {
       draw(ht_constru_highT)
     }) 
     
+    # Display LowT and HighT genes via heatmap 
     output$plot_heatmap_diffT <- renderPlot({
       
       heatmap_data_diffT<-rbind(lowT_data(), highT_data())
@@ -809,11 +725,16 @@ server <- function(input, output, session) {
       heatmap_data_high<- heatmap_data_diffT[, colnames( heatmap_data_diffT) %in% 
                                        rownames(subset(heatmap_data_means_tert, newcol=="High"))]
       
-      heatmap_data_low_clustered<-cluster_matrix(heatmap_data_low, dim = 'col', method = "average")
-      heatmap_data_med_clustered<-cluster_matrix(heatmap_data_med, dim = 'col', method = "average")
-      heatmap_data_high_clustered<-cluster_matrix(heatmap_data_high, dim = 'col', method = "average")
+      heatmap_data_low_clustered<-cluster_matrix(heatmap_data_low, 
+                                                 dim = 'col', method = "average")
+      heatmap_data_med_clustered<-cluster_matrix(heatmap_data_med, 
+                                                 dim = 'col', method = "average")
+      heatmap_data_high_clustered<-cluster_matrix(heatmap_data_high, 
+                                                  dim = 'col', method = "average")
       
-      heatmap_data_tert<-cbind(heatmap_data_low_clustered,heatmap_data_med_clustered,heatmap_data_high_clustered)
+      heatmap_data_tert<-cbind(heatmap_data_low_clustered,
+                               heatmap_data_med_clustered,
+                               heatmap_data_high_clustered)
       
       
       ht_constru = Heatmap(t(scale(t(heatmap_data_tert))),
@@ -865,7 +786,10 @@ server <- function(input, output, session) {
                                           rownames(subset(heatmap_data_means_tert, newcol=="High")),]
       
       
-      #Split metagene into tertiles
+      # Split metagene into tertiles based on radio button selected -- issue with
+      # reading single row -- it must be transposed if button 2 is selected
+      # will fix that. Now it is just a quick way to display and see if 
+      # everything makes sense 
       if (input$radio == 1)
       {
         metagene_mean_constru<-data.frame(meta_mean = metagene_mean())
@@ -882,7 +806,7 @@ server <- function(input, output, session) {
         metagene_mean_constru %>%
           mutate(newcol=NA)
         metagene_mean_constru_tert<-metagene_mean_constru %>%
-          mutate(newcol = ntile(CYTsig, 3)) %>%
+          mutate(newcol = ntile(mean_values, 3)) %>%
           mutate(newcol = if_else(newcol == 1, 'Low', if_else(newcol == 2, 'Medium', 'High')))
       }
        
@@ -934,7 +858,10 @@ server <- function(input, output, session) {
                                           rownames(subset(heatmap_data_means_tert_highT, newcol=="High")),]
       
       
-      #Split metagene into tertiles
+      # Split metagene into tertiles based on radio button selected -- issue with
+      # reading single row -- it must be transposed if button 2 is selected
+      # will fix that. Now it is just a quick way to display and see if 
+      # everything makes sense 
       if (input$radio == 1)
       {
         metagene_mean_constru_highT<-data.frame(meta_mean = metagene_mean())
@@ -951,7 +878,7 @@ server <- function(input, output, session) {
       metagene_mean_constru_highT %>%
         mutate(newcol=NA)
       metagene_mean_constru_tert_highT<-metagene_mean_constru_highT %>%
-        mutate(newcol = ntile(CYTsig, 3)) %>%
+        mutate(newcol = ntile(mean_values, 3)) %>%
         mutate(newcol = if_else(newcol == 1, 'Low', if_else(newcol == 2, 'Medium', 'High')))
       }
       
@@ -1002,7 +929,10 @@ server <- function(input, output, session) {
                                                 rownames(subset(heatmap_data_means_tert_diffT, newcol=="High")),]
       
       
-      #Split metagene into tertiles
+      # Split metagene into tertiles based on radio button selected -- issue with
+      # reading single row -- it must be transposed if button 2 is selected
+      # will fix that. Now it is just a quick way to display and see if 
+      # everything makes sense 
       if (input$radio == 1)
       {
         metagene_mean_constru_diffT<-data.frame(meta_mean = metagene_mean())
@@ -1019,7 +949,7 @@ server <- function(input, output, session) {
       metagene_mean_constru_diffT %>%
         mutate(newcol=NA)
       metagene_mean_constru_tert_diffT<-metagene_mean_constru_diffT %>%
-        mutate(newcol = ntile(CYTsig, 3)) %>%
+        mutate(newcol = ntile(mean_values, 3)) %>%
         mutate(newcol = if_else(newcol == 1, 'Low', if_else(newcol == 2, 'Medium', 'High')))
       }
       
