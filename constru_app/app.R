@@ -2,11 +2,12 @@
 # Author: Julia Chifman
 # Contact: chifman@american.edu
 # Version: 1.0
-# Year: 2021
+# Year: 2024
 ###################################
 
 library(shinydashboard)
 library(shiny)
+library(shinythemes)
 library(doParallel)
 library(ggplot2)
 library(gplots)
@@ -47,10 +48,6 @@ constru<-function(clinical, gene_data, metagene_mean)
   metagene_tertiles[metagene_mean <= quantile(metagene_mean,1:3/3)[[2]]]<-"Med"
   metagene_tertiles[metagene_mean <= quantile(metagene_mean,1:3/3)[[1]]]<-"Low"
   
-  # Subset tertiles based on Low, med or High
-  # metagene_mean_low<-metagene_mean[metagene_tertiles %in% c("Low")]
-  # metagene_mean_med<-metagene_mean[metagene_tertiles %in% c("Med")]
-  # metagene_mean_high<-metagene_mean[metagene_tertiles %in% c("High")]
   
   # Define empty vector to hold tertiles for each gene in gene_data
   gene_factors<-c()
@@ -75,7 +72,7 @@ constru<-function(clinical, gene_data, metagene_mean)
   for (k in 1:nrow(gene_data)) 
   { 
     # Tells users which gene is being processed 
-    incProgress(1/nrow(gene_data), detail = paste("Getting results for gene", k))
+    incProgress(1/nrow(gene_data), detail = paste("Getting results for gene", k, "out of", nrow(gene_data), "genes"))
     
     # Create a vector to hold values for gene k
     hold <- as.numeric(gene_data[k,])
@@ -128,7 +125,7 @@ constru<-function(clinical, gene_data, metagene_mean)
                   # they include only P-val and HR of the low/high tertiles
                   # I think gene-k variability and gene-k correlation to the
                   # metagene are also should be part of the parity score,
-                  # if we want to extract new metagene for the user without 
+                  # if we want to extract new metagenes for the user without 
                   # the user going through the table themselves. Some users
                   # might prefer to have new metagene being pre-selected. 
                   (-log10(summary(cox_low)$coef[5])/summary(cox_low)$coef[2])-
@@ -289,15 +286,25 @@ constru<-function(clinical, gene_data, metagene_mean)
 
 
 # apps input
-ui <- fluidPage(
-    theme = bslib::bs_theme(bootswatch = "yeti"),
-    titlePanel("Constru"),
-    tags$style(HTML('table.dataTable tr.selected td, 
-                    table.dataTable td.selected 
-                    {background-color: #C6BAB8 !important;}')),
-    
-    
-    tabsetPanel(
+# ui <- fluidPage(
+#     theme = bslib::bs_theme(bootswatch = "flatly"),
+#     titlePanel("Constru"),
+#     tags$style(HTML('table.dataTable tr.selected td, 
+#                     table.dataTable td.selected 
+#                     {background-color: #C6BAB8 !important;}')),
+ui <- navbarPage("Constru",
+                 theme =  shinytheme("flatly"),
+                 fluid = T, 
+                 tags$head(
+                   tags$style(HTML("table {table-layout: auto;
+                                    witdth: 80%;
+                                    font-size: 80%;
+                                    tab-size: 15px;
+                                    }"
+                                  )
+                              )
+                 ),
+    #tabsetPanel(
         # Upload clinical data tab
         tabPanel("Import data", 
                  h4("Upload Clinical Data"),
@@ -371,57 +378,54 @@ ui <- fluidPage(
                its average value"),
              plotOutput("plot_metagene_mean")),
     
-    tabPanel("Constru results",
+    tabPanel("Run Constru",
              h4("Table"),
              p("results of the analysis are displayed in the table below."),
              p("Column names will be defined here ..."),
              # Horizontal line ----
              tags$hr(),
-             actionButton("LowT", "Save lowerT genes", style="color: #135ADA; 
-                                                              background-color: #D7E4FD; 
-                                                              border-color: #135ADA; 
-                                                              font-size:120%;
-                                                              border-width: 2px"),
-             actionButton("HighT", "Save upperT genes", style="color: #D35400; 
-                                                                background-color: #FDF2E9; 
-                                                                border-color: #D35400; 
-                                                                font-size:120%; 
-                                                                border-width: 2px"),
+             # actionButton("LowT", "Save lowerT genes", style="color: #135ADA;
+             #                                                  background-color: #D7E4FD;
+             #                                                  border-color: #135ADA;
+             #                                                  font-size:120%;
+             #                                                  border-width: 2px"),
+             # actionButton("HighT", "Save upperT genes", style="color: #D35400;
+             #                                                    background-color: #FDF2E9;
+             #                                                    border-color: #D35400;
+             #                                                    font-size:120%;
+             #                                                    border-width: 2px"),
+             actionButton("LowT", "Save lowerT genes"),
+             actionButton("HighT", "Save upperT genes"),
              # Horizontal line ----
              tags$hr(),
              br(),
              DTOutput("constru_out")
     ),
     
-  tabPanel("Constru plots",
-              fluidRow(class="heatmaps",
-                       column(6, "lowerT Genes", 
-                              plotOutput("plot_heatmap_lowT", height = "200px"),
-                              style = " font-size:25px"),
-                       column(6, "upperT Genes", 
-                              plotOutput("plot_heatmap_highT", height = "200px"),
-                              style = " font-size:25px")
-                       ),
-           
-              fluidRow(class="km_plots",
-                      column(6, plotOutput("plot_KM_lowT", height = "250px")),
-                      column(6, plotOutput("plot_KM_highT", height = "250px"))
+  
+  navbarMenu("Constru plots",
+             tabPanel("LowerT Genes",
+                     fluidRow(class="lowerT_plots", "Heatmap and KM-plot LowerT Genes",
+                              plotOutput("plot_heatmap_lowT_2", height = "300px"),
+                              plotOutput("plot_KM_lowT_2", height = "350px"))
                       ),
-           
-           # Horizontal line ----
-           tags$hr(),
+             tabPanel("UpperT Genes",
+                      fluidRow(class="upperT_plots","Heatmap and KM-plot UpperT Genes",
+                               plotOutput("plot_heatmap_highT_2", height = "300px"),
+                               plotOutput("plot_KM_highT_2", height = "350px"))
+                      ),
+             tabPanel("UpperT - LowerT",
+                      fluidRow(class="diff_plots","Heatmap and KM-plot (UpperT-LowerT) Genes",
+                               plotOutput("plot_heatmap_diffT_2", height = "350px"),
+                               plotOutput("plot_KM_diffT_2", height = "350px"))
+                      )
              
-              fluidRow(class ="high_low_plots", "(upperT and lowerT) Genes",
-                plotOutput("plot_heatmap_diffT", height = "300px"),
-                plotOutput("plot_KM_diffT", height = "350px"),
-                style = "font-size:25px"
-                )
   ),
   
     tabPanel("Documentation",
              h4("Constru Documentation"),
              p("Some text goes here ... "))
-    )
+    #)
 )
 
 server <- function(input, output, session) {
@@ -449,7 +453,7 @@ server <- function(input, output, session) {
        if (input$radio == 2)
        {
          metagene<-read.table(input$file3$datapath, header = TRUE)
-         return(metagene)
+         return(t(metagene))
        }
       
     })
@@ -478,10 +482,10 @@ server <- function(input, output, session) {
         },rownames = FALSE, colnames = FALSE)
         
 
-        # a custom table container that desplays custom column names 
+        # a custom table container that displays custom column names 
         # for constru results
         custom_colnames = htmltools::withTags(table(
-          class = 'display',
+          #class = 'display',
           thead(
             tr(
               th(colspan = 9, ''),
@@ -547,15 +551,15 @@ server <- function(input, output, session) {
       search = list(regex = TRUE, caseInsensitive = TRUE),
       pageLength = 10,
       select = list(style = 'multiple'),
-      fixedHeader = TRUE,
-      width = "95%",
-      columnDefs = list(list(width = '25px')),
+      #fixedHeader = TRUE,
+      #width = "85%",
+      #columnDefs = list(list(width = '10px', targets = "_all")),
       dom = 'Bfrtip',
-      buttons = list('pageLength', 'colvis', 'copy','selectNone', 'selectRows',
+      buttons = list('pageLength', 'colvis', 'copy','selectNone', #'selectRows',
                   list(extend = 'collection',
                   buttons = c('csv', 'excel'),
                   text = 'Download',
-                  header = TRUE)),
+                  header = T)),
       #editable = TRUE,
       lengthMenu = list(c(10, 15, 25, 100, -1), c('10', '15', '25', '100','All')))) %>%
         formatSignif(1:ncol(constru_table()), digits = 3)%>%
@@ -608,9 +612,11 @@ server <- function(input, output, session) {
     
       # The rest of the code will be simplified using function() definitions.
       # For now it is repetitive, but this way I can catch errors better.
-      
-      # Display LowT genes via heatmap  
-    output$plot_heatmap_lowT <- renderPlot({
+
+    
+    #------------------------
+    # Display LowT genes via heatmap 
+    output$plot_heatmap_lowT_2 <- renderPlot({
       
       heatmap_data_means<-data.frame(meta_mean = colMeans(lowT_data()))
       heatmap_data_means %>%
@@ -620,11 +626,11 @@ server <- function(input, output, session) {
         mutate(newcol = if_else(newcol == 1, 'Low', if_else(newcol == 2, 'Medium', 'High'))) 
       
       heatmap_data_low<-lowT_data()[,colnames(lowT_data()) %in% 
-                                         rownames(subset(heatmap_data_means_tert, newcol=="Low"))]
+                                      rownames(subset(heatmap_data_means_tert, newcol=="Low"))]
       heatmap_data_med<-lowT_data()[, colnames(lowT_data()) %in% 
-                                         rownames(subset(heatmap_data_means_tert, newcol=="Medium"))]
+                                      rownames(subset(heatmap_data_means_tert, newcol=="Medium"))]
       heatmap_data_high<-lowT_data()[, colnames(lowT_data()) %in% 
-                                          rownames(subset(heatmap_data_means_tert, newcol=="High"))]
+                                       rownames(subset(heatmap_data_means_tert, newcol=="High"))]
       
       heatmap_data_low_clustered<-cluster_matrix(heatmap_data_low, 
                                                  dim = 'col', method = "average")
@@ -659,7 +665,7 @@ server <- function(input, output, session) {
     }) 
     
     # Display HighT genes via heatmap 
-    output$plot_heatmap_highT <- renderPlot({
+    output$plot_heatmap_highT_2 <- renderPlot({
       
       heatmap_data_means_highT<-data.frame(meta_mean = colMeans(highT_data()))
       heatmap_data_means_highT %>%
@@ -669,11 +675,11 @@ server <- function(input, output, session) {
         mutate(newcol = if_else(newcol == 1, 'Low', if_else(newcol == 2, 'Medium', 'High'))) 
       
       heatmap_data_low_highT<-highT_data()[,colnames(highT_data()) %in% 
-                                      rownames(subset(heatmap_data_means_tert_highT, newcol=="Low"))]
+                                             rownames(subset(heatmap_data_means_tert_highT, newcol=="Low"))]
       heatmap_data_med_highT<-highT_data()[, colnames(highT_data()) %in% 
-                                      rownames(subset(heatmap_data_means_tert_highT, newcol=="Medium"))]
+                                             rownames(subset(heatmap_data_means_tert_highT, newcol=="Medium"))]
       heatmap_data_high_highT<-highT_data()[, colnames(highT_data()) %in% 
-                                       rownames(subset(heatmap_data_means_tert_highT, newcol=="High"))]
+                                              rownames(subset(heatmap_data_means_tert_highT, newcol=="High"))]
       
       heatmap_data_low_clustered_highT<-cluster_matrix(heatmap_data_low_highT, 
                                                        dim = 'col', method = "average")
@@ -688,27 +694,27 @@ server <- function(input, output, session) {
       
       
       ht_constru_highT = Heatmap(t(scale(t(heatmap_data_tert_highT))),
-                           cluster_rows = TRUE,
-                           cluster_columns = FALSE,
-                           show_column_names = FALSE,
-                           column_split = c(rep("1: Low Tertile", ncol(heatmap_data_low_highT)),
-                                            rep("2: Medium Tertile", ncol(heatmap_data_med_highT)),
-                                            rep("3: High Tertile", ncol(heatmap_data_high_highT))),
-                           row_labels = c(rownames(highT_data())),
-                           column_gap = unit(10,"mm"), 
-                           column_title_gp = gpar(fill=c("#BDD4FE","#F4F6F6","#FDF2E9"),
-                                                  col=c("#0B3B90", "#717D7E","#D35400"),
-                                                  fontsize=16),
-                           show_heatmap_legend = FALSE,
-                           show_row_dend = FALSE,
-                           col=colorpanel(32, "#0650d1", "#dcdce6", "#ed4507") 
+                                 cluster_rows = TRUE,
+                                 cluster_columns = FALSE,
+                                 show_column_names = FALSE,
+                                 column_split = c(rep("1: Low Tertile", ncol(heatmap_data_low_highT)),
+                                                  rep("2: Medium Tertile", ncol(heatmap_data_med_highT)),
+                                                  rep("3: High Tertile", ncol(heatmap_data_high_highT))),
+                                 row_labels = c(rownames(highT_data())),
+                                 column_gap = unit(10,"mm"), 
+                                 column_title_gp = gpar(fill=c("#BDD4FE","#F4F6F6","#FDF2E9"),
+                                                        col=c("#0B3B90", "#717D7E","#D35400"),
+                                                        fontsize=16),
+                                 show_heatmap_legend = FALSE,
+                                 show_row_dend = FALSE,
+                                 col=colorpanel(32, "#0650d1", "#dcdce6", "#ed4507") 
       )
       
       draw(ht_constru_highT)
     }) 
     
     # Display LowT and HighT genes via heatmap 
-    output$plot_heatmap_diffT <- renderPlot({
+    output$plot_heatmap_diffT_2 <- renderPlot({
       
       heatmap_data_diffT<-rbind(lowT_data(), highT_data())
       heatmap_data_means<-data.frame(meta_mean = colMeans(highT_data())-colMeans(lowT_data()))
@@ -719,11 +725,11 @@ server <- function(input, output, session) {
         mutate(newcol = if_else(newcol == 1, 'Low', if_else(newcol == 2, 'Medium', 'High'))) 
       
       heatmap_data_low<- heatmap_data_diffT[,colnames(heatmap_data_diffT) %in% 
-                                      rownames(subset(heatmap_data_means_tert, newcol=="Low"))]
+                                              rownames(subset(heatmap_data_means_tert, newcol=="Low"))]
       heatmap_data_med<- heatmap_data_diffT[, colnames( heatmap_data_diffT) %in% 
-                                      rownames(subset(heatmap_data_means_tert, newcol=="Medium"))]
+                                              rownames(subset(heatmap_data_means_tert, newcol=="Medium"))]
       heatmap_data_high<- heatmap_data_diffT[, colnames( heatmap_data_diffT) %in% 
-                                       rownames(subset(heatmap_data_means_tert, newcol=="High"))]
+                                               rownames(subset(heatmap_data_means_tert, newcol=="High"))]
       
       heatmap_data_low_clustered<-cluster_matrix(heatmap_data_low, 
                                                  dim = 'col', method = "average")
@@ -750,12 +756,12 @@ server <- function(input, output, session) {
                            row_gap=unit(5,"mm"),
                            column_gap = unit(10,"mm"), 
                            row_title_gp = gpar(fill=c("#BDD4FE", "#FDF2E9"),
-                                                  col=c("#0B3B90","#D35400"),
-                                                  fontsize=14),
+                                               col=c("#0B3B90","#D35400"),
+                                               fontsize=14),
                            column_title_gp = gpar(fill=c("#BDD4FE","#F4F6F6","#FDF2E9"),
                                                   col=c("#0B3B90", "#717D7E","#D35400"),
                                                   fontsize=16),
-                            heatmap_legend_param = list(
+                           heatmap_legend_param = list(
                              title = "Heatmap Color key",
                              title_gp = gpar(fontsize = 14),
                              direction = "horizontal",
@@ -768,7 +774,7 @@ server <- function(input, output, session) {
     }) 
     
     # KM plots for LowT
-    output$plot_KM_lowT <-renderPlot({
+    output$plot_KM_lowT_2 <-renderPlot({
       
       heatmap_data_means<-data.frame(meta_mean = colMeans(lowT_data())) 
       heatmap_data_means %>%
@@ -802,14 +808,14 @@ server <- function(input, output, session) {
       
       if (input$radio == 2)
       {
-        metagene_mean_constru<-data.frame(meta_mean = t(metagene_mean()))
+        metagene_mean_constru<-data.frame(meta_mean = metagene_mean())
         metagene_mean_constru %>%
           mutate(newcol=NA)
         metagene_mean_constru_tert<-metagene_mean_constru %>%
           mutate(newcol = ntile(mean_values, 3)) %>%
           mutate(newcol = if_else(newcol == 1, 'Low', if_else(newcol == 2, 'Medium', 'High')))
       }
-       
+      
       
       metagene_mean_constru_low<-metagene_mean_constru_tert[rownames(metagene_mean_constru_tert) %in%
                                                               rownames(subset(heatmap_data_means_tert, newcol=="Low")),]
@@ -840,7 +846,7 @@ server <- function(input, output, session) {
     })
     
     # KM plots for HighT
-    output$plot_KM_highT <-renderPlot({
+    output$plot_KM_highT_2 <-renderPlot({
       
       heatmap_data_means_highT<-data.frame(meta_mean = colMeans(highT_data())) 
       heatmap_data_means_highT %>%
@@ -851,11 +857,11 @@ server <- function(input, output, session) {
       
       #KM plots
       clinical_constru_low_highT<-clinical()[rownames(clinical()) %in% 
-                                         rownames(subset(heatmap_data_means_tert_highT, newcol=="Low")),]
+                                               rownames(subset(heatmap_data_means_tert_highT, newcol=="Low")),]
       clinical_constru_med_highT<-clinical()[rownames(clinical()) %in% 
-                                         rownames(subset(heatmap_data_means_tert_highT, newcol=="Medium")),]
+                                               rownames(subset(heatmap_data_means_tert_highT, newcol=="Medium")),]
       clinical_constru_high_highT<-clinical()[rownames(clinical()) %in% 
-                                          rownames(subset(heatmap_data_means_tert_highT, newcol=="High")),]
+                                                rownames(subset(heatmap_data_means_tert_highT, newcol=="High")),]
       
       
       # Split metagene into tertiles based on radio button selected -- issue with
@@ -874,20 +880,20 @@ server <- function(input, output, session) {
       
       if (input$radio == 2)
       {
-      metagene_mean_constru_highT<-data.frame(meta_mean = t(metagene_mean()))
-      metagene_mean_constru_highT %>%
-        mutate(newcol=NA)
-      metagene_mean_constru_tert_highT<-metagene_mean_constru_highT %>%
-        mutate(newcol = ntile(mean_values, 3)) %>%
-        mutate(newcol = if_else(newcol == 1, 'Low', if_else(newcol == 2, 'Medium', 'High')))
+        metagene_mean_constru_highT<-data.frame(meta_mean = metagene_mean())
+        metagene_mean_constru_highT %>%
+          mutate(newcol=NA)
+        metagene_mean_constru_tert_highT<-metagene_mean_constru_highT %>%
+          mutate(newcol = ntile(mean_values, 3)) %>%
+          mutate(newcol = if_else(newcol == 1, 'Low', if_else(newcol == 2, 'Medium', 'High')))
       }
       
       metagene_mean_constru_low_highT<-metagene_mean_constru_tert_highT[rownames(metagene_mean_constru_tert_highT) %in%
-                                                              rownames(subset(heatmap_data_means_tert_highT, newcol=="Low")),]
+                                                                          rownames(subset(heatmap_data_means_tert_highT, newcol=="Low")),]
       metagene_mean_constru_med_highT<-metagene_mean_constru_tert_highT[rownames(metagene_mean_constru_tert_highT) %in%
-                                                              rownames(subset(heatmap_data_means_tert_highT, newcol=="Medium")),]
+                                                                          rownames(subset(heatmap_data_means_tert_highT, newcol=="Medium")),]
       metagene_mean_constru_high_highT<-metagene_mean_constru_tert_highT[rownames(metagene_mean_constru_tert_highT) %in%
-                                                               rownames(subset(heatmap_data_means_tert_highT, newcol=="High")),]
+                                                                           rownames(subset(heatmap_data_means_tert_highT, newcol=="High")),]
       
       
       data_for_fit_low_highT<-merge(clinical_constru_low_highT,metagene_mean_constru_low_highT, by="row.names", all=TRUE)
@@ -911,7 +917,7 @@ server <- function(input, output, session) {
     })
     
     # KM plots for diffT
-    output$plot_KM_diffT <-renderPlot({
+    output$plot_KM_diffT_2 <-renderPlot({
       
       heatmap_data_means_diffT<-data.frame(meta_mean = colMeans(highT_data())-colMeans(lowT_data())) 
       heatmap_data_means_diffT %>%
@@ -945,12 +951,12 @@ server <- function(input, output, session) {
       
       if (input$radio == 2)
       {
-      metagene_mean_constru_diffT<-data.frame(meta_mean = t(metagene_mean()))
-      metagene_mean_constru_diffT %>%
-        mutate(newcol=NA)
-      metagene_mean_constru_tert_diffT<-metagene_mean_constru_diffT %>%
-        mutate(newcol = ntile(mean_values, 3)) %>%
-        mutate(newcol = if_else(newcol == 1, 'Low', if_else(newcol == 2, 'Medium', 'High')))
+        metagene_mean_constru_diffT<-data.frame(meta_mean = metagene_mean())
+        metagene_mean_constru_diffT %>%
+          mutate(newcol=NA)
+        metagene_mean_constru_tert_diffT<-metagene_mean_constru_diffT %>%
+          mutate(newcol = ntile(mean_values, 3)) %>%
+          mutate(newcol = if_else(newcol == 1, 'Low', if_else(newcol == 2, 'Medium', 'High')))
       }
       
       metagene_mean_constru_low_diffT<-metagene_mean_constru_tert_diffT[rownames(metagene_mean_constru_tert_diffT) %in%
@@ -980,7 +986,11 @@ server <- function(input, output, session) {
       arrange_ggsurvplots(list(plot_km_1_diffT, plot_km_2_diffT, plot_km_3_diffT),ncol=3)
       
     })
+    #------------------
     
+    session$onSessionEnded(function() {
+       stopApp()
+   })
     
 }
 
