@@ -182,10 +182,12 @@ constru_single=function(gene, clinical, gene_data, metagene_mean,cox_formula){
 
 constru<-function(clinical, gene_data, metagene_mean,cox_formula){
 	ncores=detectCores()
+	ncores=max(ncores-2,1)
 	gi=rownames(gene_data)
 	oo=mclapply(gi,function(x){constru_single(x,clinical,gene_data,metagene_mean,cox_formula)} ,mc.cores=ncores)
 	oo=t(as.data.frame(oo))
 	rownames(oo)=gi
+	save(oo,file="output.Rdata")
 	return(oo)
 }
 
