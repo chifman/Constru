@@ -374,13 +374,13 @@ server <- function(input, output, session) {
 	observeEvent(input$run,{
 		if(nclicks() != 0){ showNotification("Already running analysis"); return(NULL) }
 		nclicks(nclicks() + 1)
-		showNotification("Starting analysis")
 		constru_table(NULL)
 		clin1=req(clinical())
 		gene1=req(gene_data())
 		meta1=req(metagene_mean())
 		cox_form1=req(input$cox_formula)
 		ncores1=req(input$ncores)
+		showNotification("Starting analysis")
 		# run async
 		run_analysis<-future({
 			oo=constru(clin1,gene1,meta1,cox_form1,ncores1)
