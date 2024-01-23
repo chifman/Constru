@@ -393,7 +393,7 @@ server <- function(input, output, session) {
 			print(e$message)
 			showNotification(e$message)
 		})
-		# After the promise has been evaluated set nclicks to 0 to allow for anlother Run
+		# After the promise has been evaluated set nclicks to 0 to allow for another Run
 		run_analysis <- finally(run_analysis,
 			function(){
 			showNotification("Done!")
