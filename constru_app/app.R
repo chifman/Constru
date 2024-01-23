@@ -27,6 +27,8 @@ library(ggfortify)
 library(gridExtra)
 library(textshape)
 library(patchwork)
+library(future)
+library(promises)
 
 # max size of file upload
 options(shiny.maxRequestSize=1000*1024^2)
@@ -180,14 +182,11 @@ constru_single=function(gene, clinical, gene_data, metagene_mean,cox_formula){
 }
 
 
-constru<-function(clinical, gene_data, metagene_mean,cox_formula){
-	ncores=detectCores()
-	ncores=max(ncores-2,1)
+constru<-function(clinical, gene_data, metagene_mean,cox_formula,ncores){
 	gi=rownames(gene_data)
 	oo=mclapply(gi,function(x){constru_single(x,clinical,gene_data,metagene_mean,cox_formula)} ,mc.cores=ncores)
 	oo=t(as.data.frame(oo))
 	rownames(oo)=gi
-	save(oo,file="output.Rdata")
 	return(oo)
 }
 
@@ -288,6 +287,8 @@ ui <- navbarPage("Constru",
              plotOutput("plot_metagene_mean")),
     
     tabPanel("Run Constru",
+             textInput("ncores", "Number of threads", value = detectCores()),
+	     actionButton('run', 'Run'),
              h4("Table"),
              p("results of the analysis are displayed in the table below."),
              p("Column names will be defined here ..."),
@@ -366,11 +367,47 @@ server <- function(input, output, session) {
        }
       
     })
-    
-    constru_table<-reactive({
+
+	nclicks <- reactiveVal(0)
+
+	constru_table <- reactiveVal()
+	observeEvent(input$run,{
+		if(nclicks() != 0){ showNotification("Already running analysis"); return(NULL) }
+		nclicks(nclicks() + 1)
+		showNotification("Starting analysis")
+		constru_table(NULL)
+		clin1=req(clinical())
+		gene1=req(gene_data())
+		meta1=req(metagene_mean())
+		cox_form1=req(input$cox_formula)
+		ncores1=req(input$ncores)
+		# run async
+		run_analysis<-future({
+			oo=constru(clin1,gene1,meta1,cox_form1,ncores1)
+			return(oo)
+		}) %...>% constru_table()
+		# Catch inturrupt (or any other error) and notify user
+		run_analysis <- catch(run_analysis,
+			function(e){
+			result_val(NULL)
+			print(e$message)
+			showNotification(e$message)
+		})
+		# After the promise has been evaluated set nclicks to 0 to allow for anlother Run
+		run_analysis <- finally(run_analysis,
+			function(){
+			showNotification("Done!")
+			nclicks(0)
+		})
+		# Wait
+		return(NULL)
+	})
+
+
+#    constru_table<-reactive({
 #      withProgress(message = "Calculation in progress ...", constru(clinical(), gene_data(), metagene_mean(),input$cox_formula))
-      constru(clinical(), gene_data(), metagene_mean(),input$cox_formula)
-    })
+#      constru(clinical(), gene_data(), metagene_mean(),input$cox_formula)
+#    })
     
     output$contents <- renderTable({
         
@@ -428,7 +465,7 @@ server <- function(input, output, session) {
              )
           )
         ))
-        print(custom_colnames)
+        #print(custom_colnames)
     
     # visualize metagene via heatmap if names were uploaded
     output$plot_metagene_mean<-renderPlot({
@@ -455,7 +492,7 @@ server <- function(input, output, session) {
     
     # display constru results
     output$constru_out <- renderDT({
-    datatable(constru_table(),
+    datatable(req(constru_table()),
     extensions = c("Buttons", "Select"),
     selection = 'none',
     filter = 'top',
