@@ -29,6 +29,7 @@ library(textshape)
 library(patchwork)
 library(future)
 library(promises)
+library(tictoc)
 
 # max size of file upload
 options(shiny.maxRequestSize=1000*1024^2)
@@ -381,6 +382,7 @@ server <- function(input, output, session) {
 		cox_form1=req(input$cox_formula)
 		ncores1=req(input$ncores)
 		showNotification("Starting analysis")
+		tic(paste("Constru Execution Time using", ncores1, "threads", sep=" "))
 		# run async
 		run_analysis<-future({
 			oo=constru(clin1,gene1,meta1,cox_form1,ncores1)
@@ -397,6 +399,7 @@ server <- function(input, output, session) {
 		run_analysis <- finally(run_analysis,
 			function(){
 			showNotification("Done!")
+			toc()
 			nclicks(0)
 		})
 		# Wait
