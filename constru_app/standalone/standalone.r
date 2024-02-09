@@ -151,6 +151,27 @@ constru<-function(clinical, gene_data, metagene_mean,cox_formula,ncores){
 	return(oo)
 }
 
+cox_formula_u=NA
+clinical_u=NA
+gene_data_u=NA
+metagene_mean_u=NA
+constru2<-function(clinical, gene_data, metagene_mean,cox_formula,ncores){
+	cox_formula_u=cox_formula
+	clinical_u=clinical
+	gene_data_u=gene_data
+	metagene_mean_u=metagene_mean
+	gi=rownames(gene_data_u)
+#	if( Sys.info()[['sysname']] == 'Windows' ){}
+	cl <- makeCluster(ncores)
+	clusterExport(cl, varlist=c("categorize_tertiles","constru_single","clinical_u","gene_data_u","metagene_mean_u","cox_formula_u"))
+	clusterEvalQ(cl, { library(survival); library(survminer); library(parallel); })
+	oo=parLapply(cl,gi,function(x){ constru_single(x,clinical_u,gene_data_u,metagene_mean_u,cox_formula_u) })
+	stopCluster(cl)
+	oo=t(as.data.frame(oo))
+	rownames(oo)=gi
+	return(oo)
+}
+
 constru_old<-function(clinical, gene_data, metagene_mean)
 {
   # make surv object
@@ -409,4 +430,12 @@ system.time(constru(clinical, gene_data, metagene_mean,"Surv( OS_Time, OS_Event)
 print("Single-threaded - Julia:")
 system.time(constru_old(clinical, gene_data, metagene_mean))
 
+print("parlapply_Multi-threaded 6:")
+system.time(constru2(clinical, gene_data, metagene_mean,"Surv( OS_Time, OS_Event) ~ metagene",6))
+print("parlapply_Multi-threaded 4:")
+system.time(constru2(clinical, gene_data, metagene_mean,"Surv( OS_Time, OS_Event) ~ metagene",4))
+print("parlapply_Multi-threaded 2:")
+system.time(constru2(clinical, gene_data, metagene_mean,"Surv( OS_Time, OS_Event) ~ metagene",2))
+print("parlapply_Single-threaded:")
+system.time(constru2(clinical, gene_data, metagene_mean,"Surv( OS_Time, OS_Event) ~ metagene",1))
 
