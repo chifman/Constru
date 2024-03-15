@@ -184,6 +184,10 @@ constru_single=function(gene, clinical, gene_data, metagene_mean,cox_formula){
 
 
 constru<-function(clinical, gene_data, metagene_mean,cox_formula,ncores){
+	# remove rows where more than 1/3 the sample have zero expression
+	keep=apply(gene_data,1,function(x){sum(x==0)/length(x) < 1/3})
+	gene_data=gene_data[keep,]
+	#
 	gi=rownames(gene_data)
 	keep=sapply(gi,function(gene){hold=unlist(gene_data[gene,]); return(sum(hold==0)/length(hold) < 1/3)})
 	oo=mclapply(gi[keep],function(x){constru_single(x,clinical,gene_data,metagene_mean,cox_formula)} ,mc.cores=ncores)
