@@ -2,6 +2,9 @@
 
 ### Introduction
 
+This algorithm measures how the relative expression of each gene enhances or antagonizes the association between a prognostic marker and patient survival.
+
+
 
 ### Installation
 
@@ -11,22 +14,20 @@
 # Step 1: download the package
 # Step 2: install local package
 
-library(devtools)
-
+install.packages(path_to_repository, repos = NULL, type="source")
 
 # We plan to make the package available on a public Github repository.
 # When it is available, it can be installed with the commands:
 
-BiocManager::install("chifman/Constru")
+install_github("chifman/Constru")
 
 ```
 
 ### Input
 
-survival data
-prognostic variable
-
-gene expression data
+1. Patient survival data
+2. Prognostic variable
+3. Gene expression data
 
 ### Options
 

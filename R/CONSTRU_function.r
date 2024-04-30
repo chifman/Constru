@@ -124,13 +124,6 @@ constru_single_Mclust=function(gene, clinical, gene_data, metagene_mean,cox_form
 		All_Pval=c(All_Pval,sres.cox$coef["metagene","Pr(>|z|)"])
 		All_HR=c(All_HR,sres.cox$coef["metagene","exp(coef)"])
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
-
-#	tryCatch({
-#		data_subset_tertiles=cbind(clinical,metagene=metagene_mean_tertiles)
-#		res.surv = survfit(as.formula(cox_formula), data = data_subset[keep,])
-#		available=names(res.surv$strata)
-#		if(){}
-#	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	}
 	output["All_Pval"]=paste(All_Pval,sep=",",collapse=",")
 	output["All_HR"]=paste(All_HR,sep=",",collapse=",")

@@ -1,4 +1,4 @@
-#library(devtools)
+library(devtools)
 #
 ## 1. make package directory
 # create_package()
@@ -11,25 +11,34 @@
 #
 # 4. Save function
 # use_r("strsplit1")
+#  
 #
 # 5. Load function
 # load_all()
 # install()
 #
-# 6. Documentation
-# document()
-# export(strsplit1)
 #
 # 6. Dependencies
-# use_package("stringr")
-#
-# 6. check
-# check()
+# use_package("parallel")
+# use_package("survival")
+# use_package("survminer")
 #
 # 8. License
 # use_mit_license()
 #
-# 9 readme
+# . Edit description
+#
+# . Documentation
+# document()
+# export(strsplit1)
 # use_readme_rmd()
 #
+# . readme
+# use_readme_rmd()
+#
+# . check
+# check()
+
+install.packages(".", repos = NULL, type="source")
+library("CONSTRU")
 
