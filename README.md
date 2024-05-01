@@ -18,15 +18,15 @@ As such, the second method separates the samples by gene expression tertile befo
 
 PS1=\
       (-log10("cox regression Pvalue of gene Tertile 1")/"cox regression Hazard ratio of gene Tertile 1") - \
-      (-log10("cox regression Pvalue of gene Tertile 3")/"cox regression Hazard ratio of gene Tertile 3")\
+      (-log10("cox regression Pvalue of gene Tertile 3")/"cox regression Hazard ratio of gene Tertile 3")
  
 PS2=\
       (log("cox regression Pvalue of gene Tertile 1")*("cox regression Hazard ratio of gene Tertile 1"-1)) - \
-      (log("cox regression Pvalue of gene Tertile 3")*("cox regression Hazard ratio of gene Tertile 3"-1))\
+      (log("cox regression Pvalue of gene Tertile 3")*("cox regression Hazard ratio of gene Tertile 3"-1))
  
 PS3= \
       (log("cox regression Pvalue of gene Tertile 1")*log("cox regression Hazard ratio of gene Tertile 1"))- \
-      (log("cox regression Pvalue of gene Tertile 3")*log("cox regression Hazard ratio of gene Tertile 3"))\
+      (log("cox regression Pvalue of gene Tertile 3")*log("cox regression Hazard ratio of gene Tertile 3"))
  
 Parity score PS1 is used to rank the genes by its effect on the prognostic marker in the paper _A patient stratification signature mirrors the immunogenic potential of high grade serous ovarian cancers. [Journal](link)_. Higher parity scores equate with genes that have greater Prognostic variable - survival associations in the first tertile, whereas lower parity scores equate with genes that have greater Prognostic variable - survival associations in the third tertile.
 
