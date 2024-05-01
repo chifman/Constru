@@ -30,11 +30,19 @@ PS3=
  
 Parity score PS1 is used to rank the genes by its effect on the prognostic marker in the paper _A patient stratification signature mirrors the immunogenic potential of high grade serous ovarian cancers. [Journal](link)_. Higher parity scores equate with genes that have greater Prognostic variable - survival associations in the first tertile, whereas lower parity scores equate with genes that have greater Prognostic variable - survival associations in the third tertile.
 
-**Strategy 3: "constru_Mclust"**
+**Strategy 3: "constru_kmeans"**
 
 Separating by tertiles is a simple way to categorize genes by high and low expression. However, the gene's behavior might now follow these specific divisions. 
 
+To remove this assumption, kmeans clustering is used to determine the division between a set number of groups. The exact number of groups can be specified using the option ngroups.
+
+**Strategy 4: "constru_Mclust"**
+
+In strategies 2 and 3, the programs assumed that a fixed number of groups.
+
 To remove this assumption, R package MClust (Model-based clustering based on parameterized finite Gaussian mixture models) is used to categorize the prognostic variable and gene expression into clusters. The parity scores above are calculated by selecting two of the groups identified by MClust; the selection prioritizes maximizing the parity score. 
+
+Note: This algorithm is very computationally intensive compared to the other methods.
 
 ### Installation
 
@@ -66,14 +74,16 @@ install_github("chifman/Constru")
     A vector with the prognostic variable data. It should be of the same length and order as the row of the survival data.
 
 4. Formula used for cox regression. Example: 
-    Surv( OS_TIME , OS_Event ) ~ prognostic_variable \cr
+    Surv( OS_TIME , OS_Event ) ~ prognostic_variable 
 
 If additional prognostic factors need to be added to the model, add it as a column in the survival data and use its column name in the formula. Example:
-    Surv( OS_TIME , OS_Event ) ~ prognostic_variable + AGE \cr
+    Surv( OS_TIME , OS_Event ) ~ prognostic_variable + AGE 
 
 ### Vignette
 
 ```{r}
+
+# The sample data and vignette code is located in the vignette folder. 
 
 library(CONSTRU)
 

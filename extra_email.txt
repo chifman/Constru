@@ -2,12 +2,17 @@ Hi everyone,
 
 I've uploaded the R-package version of CONSTRU to Julia's github (https://github.com/chifman/Constru)
 
+I have also attached it to this email.
+I have also a html version of the README to this email.
+
 I've moved the previous CONSTRU programs into https://github.com/chifman/Constru/tree/main/extra_constru_app
+All of the files starting with extra_* are files that are not part of the package, just a lot of extra files that were part of the development and past programs.
 
-PS2
+====
 
-prognostic_variable
-	metagene
+Let me know if the program is working and if you notice anything wrong with the documentation. 
+
+Help me review the README. By they way, do you have a description for prognostic_variable PS2 and PS3?
 
 
 Thanks,
