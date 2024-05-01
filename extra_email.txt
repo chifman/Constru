@@ -12,8 +12,8 @@ All of the files starting with extra_* are files that are not part of the packag
 
 Let me know if the program is working and if you notice anything wrong with the documentation. 
 
-Help me review the README. By they way, do you have a description for prognostic_variable PS2 and PS3?
-
+By they way, do you have a description for prognostic_variable PS2 and PS3?
 
 Thanks,
 Ming
+
