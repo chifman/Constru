@@ -6,35 +6,35 @@ This algorithm measures how the relative expression of each gene enhances or ant
 
 Three different strategies were used.
 
-Strategy 1: "constru_continuous"
+**Strategy 1: "constru_continuous"**
 
-	The simplest method is to include the association as a interaction term in the cox regression. 
+The simplest method is to include the association as a interaction term in the cox regression. 
 
-Strategy 2: "constru"
+**Strategy 2: "constru"**
 
-	Cox regression assumes that continuous predictors have a linear relationship with the outcome. However, multiple studies have shown that the prognostic and predictive power of immune signatures may be restricted to distinct tumor subgroups with favorable immunogenic properties. The discrete partitions of the subgroups often result in non-continuous relationships.
+Cox regression assumes that continuous predictors have a linear relationship with the outcome. However, multiple studies have shown that the prognostic and predictive power of immune signatures may be restricted to distinct tumor subgroups with favorable immunogenic properties. The discrete partitions of the subgroups often result in non-continuous relationships.
 
-	As such, the second method separates the samples by gene expression tertile before performing cox regression. The results of the cox regression of the first and third tertile is used to calculate a parity score to quantify the effect. The three parity scores calculated are as follows:
+As such, the second method separates the samples by gene expression tertile before performing cox regression. The results of the cox regression of the first and third tertile is used to calculate a parity score to quantify the effect. The three parity scores calculated are as follows:
 
-	PS1=
-	      (-log10("cox regression Pvalue of gene Tertile 1")/"cox regression Hazard ratio of gene Tertile 1") - 
-	      (-log10("cox regression Pvalue of gene Tertile 3")/"cox regression Hazard ratio of gene Tertile 3")
-	 
-	PS2=
-	      (log("cox regression Pvalue of gene Tertile 1")*("cox regression Hazard ratio of gene Tertile 1"-1)) - 
-	      (log("cox regression Pvalue of gene Tertile 3")*("cox regression Hazard ratio of gene Tertile 3"-1))
-	 
-	PS3= 
-	      (log("cox regression Pvalue of gene Tertile 1")*log("cox regression Hazard ratio of gene Tertile 1"))- 
-	      (log("cox regression Pvalue of gene Tertile 3")*log("cox regression Hazard ratio of gene Tertile 3"))
-	 
-	Parity score PS1 is used to rank the genes by its effect on the prognostic marker in the paper _A patient stratification signature mirrors the immunogenic potential of high grade serous ovarian cancers. [Journal](link)_. Higher parity scores equate with genes that have greater Prognostic variable - survival associations in the first tertile, whereas lower parity scores equate with genes that have greater Prognostic variable - survival associations in the third tertile.
+PS1=
+      (-log10("cox regression Pvalue of gene Tertile 1")/"cox regression Hazard ratio of gene Tertile 1") - 
+      (-log10("cox regression Pvalue of gene Tertile 3")/"cox regression Hazard ratio of gene Tertile 3")
+ 
+PS2=
+      (log("cox regression Pvalue of gene Tertile 1")*("cox regression Hazard ratio of gene Tertile 1"-1)) - 
+      (log("cox regression Pvalue of gene Tertile 3")*("cox regression Hazard ratio of gene Tertile 3"-1))
+ 
+PS3= 
+      (log("cox regression Pvalue of gene Tertile 1")*log("cox regression Hazard ratio of gene Tertile 1"))- 
+      (log("cox regression Pvalue of gene Tertile 3")*log("cox regression Hazard ratio of gene Tertile 3"))
+ 
+Parity score PS1 is used to rank the genes by its effect on the prognostic marker in the paper _A patient stratification signature mirrors the immunogenic potential of high grade serous ovarian cancers. [Journal](link)_. Higher parity scores equate with genes that have greater Prognostic variable - survival associations in the first tertile, whereas lower parity scores equate with genes that have greater Prognostic variable - survival associations in the third tertile.
 
-Strategy 3: "constru_Mclust"
+**Strategy 3: "constru_Mclust"**
 
-	Separating by tertiles is a simple way to categorize genes by high and low expression. However, the gene's behavior might now follow these specific divisions. 
-	
-	To remove this assumption, R package MClust (Model-based clustering based on parameterized finite Gaussian mixture models) is used to categorize the prognostic variable and gene expression into clusters. The parity scores above are calculated by selecting two of the groups identified by MClust; the selection prioritizes maximizing the parity score. 
+Separating by tertiles is a simple way to categorize genes by high and low expression. However, the gene's behavior might now follow these specific divisions. 
+
+To remove this assumption, R package MClust (Model-based clustering based on parameterized finite Gaussian mixture models) is used to categorize the prognostic variable and gene expression into clusters. The parity scores above are calculated by selecting two of the groups identified by MClust; the selection prioritizes maximizing the parity score. 
 
 ### Installation
 
