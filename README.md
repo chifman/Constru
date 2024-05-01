@@ -16,6 +16,7 @@ Cox regression assumes that continuous predictors have a linear relationship wit
 
 As such, the second method separates the samples by gene expression tertile before performing cox regression. The results of the cox regression of the first and third tertile is used to calculate a parity score to quantify the effect. The three parity scores calculated are as follows:
 
+```
 PS1=\
       (-log10("cox regression Pvalue of gene Tertile 1")/"cox regression Hazard ratio of gene Tertile 1") - \
       (-log10("cox regression Pvalue of gene Tertile 3")/"cox regression Hazard ratio of gene Tertile 3")
@@ -27,6 +28,7 @@ PS2=\
 PS3= \
       (log("cox regression Pvalue of gene Tertile 1")*log("cox regression Hazard ratio of gene Tertile 1"))- \
       (log("cox regression Pvalue of gene Tertile 3")*log("cox regression Hazard ratio of gene Tertile 3"))
+```
  
 Parity score PS1 is used to rank the genes by its effect on the prognostic marker in the paper _A patient stratification signature mirrors the immunogenic potential of high grade serous ovarian cancers. [Journal](link)_. Higher parity scores equate with genes that have greater Prognostic variable - survival associations in the first tertile, whereas lower parity scores equate with genes that have greater Prognostic variable - survival associations in the third tertile.
 
@@ -85,7 +87,31 @@ If additional prognostic factors need to be added to the model, add it as a colu
 
 # The sample data and vignette code is located in the vignette folder. 
 
-library(CONSTRU)
+library("CONSTRU")
+
+gene_data=read.table("Ovarian_cancer_gene_expression.tsv")
+survival_data=read.table("Ovarian_cancer_survival_data.tsv")
+prognostic_variable=read.table("Prognostic_variable.tsv")
+cox_formula="Surv( OS_Time , OS_Event ) ~ prognostic_variable";
+ncores=parallel::detectCores()
+
+# format the input so that the order is the same
+survival_data=survival_data[rownames(survival_data),]
+prognostic_variable_d=unlist(prognostic_variable[rownames(survival_data),])
+
+
+# Strategy 1 
+output1=constru(survival_data, gene_data, prognostic_variable_d,cox_formula,ncores)
+
+# Strategy 2
+output2=constru_continuous(survival_data, gene_data, prognostic_variable_d,cox_formula,ncores)
+
+# Strategy 3
+n_kmeans_groups=3
+output3=constru_kmeans(survival_data, gene_data, prognostic_variable_d,cox_formula,ncores,n_kmeans_groups)
+
+# Strategy 4
+output4=constru_Mclust(survival_data, gene_data, prognostic_variable_d,cox_formula,ncores)
 
 ```
 

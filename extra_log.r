@@ -46,3 +46,7 @@ document()
 #install.packages(".", repos = NULL, type="source")
 #library("CONSTRU")
 
+# 
+library(markdown)
+markdownToHTML('README.md', 'README.html')
+
