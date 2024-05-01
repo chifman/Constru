@@ -1,8 +1,5 @@
 #!/usr/bin/env Rscript
- 
-suppressMessages(library(parallel))
-suppressMessages(library(survival))
-suppressMessages(library(survminer))
+
 
 can.be.numeric <- function(x) {
     stopifnot(is.atomic(x) || is.list(x)) # check if x is a vector
@@ -20,13 +17,6 @@ check_numeric=function(myDF){
 	return(as.data.frame(myDF2))
 }
 
-#categorize_tertiles=function(x){
-#	y=rep(3,length(x))
-#	y[x <= quantile(x,2/3)]=2
-#	y[x <= quantile(x,1/3)]=1
-#	return(y)
-#}
-
 categorize_tertiles=function(x){
 	ox=order(x)
 	y=rep(3,length(x))
@@ -35,56 +25,56 @@ categorize_tertiles=function(x){
 	return(y)
 }
 
-constru_single_continuous=function(gene, clinical, gene_data, metagene_mean,cox_formula){
-	require(survival)
-	require(survminer)
+constru_single_continuous=function(gene, survival_data, gene_data, prognostic_variable_d,cox_formula){
+	suppressMessages(require(survival))
+	suppressMessages(require(survminer))
 	# output format
 	column_names<-c("mean","P5%","P95%","Diff P95%_5%","R",
-	"metagene_coef",
-	"metagene_HR",
-	"metagene_Pval",
+	"prognostic_variable_coef",
+	"prognostic_variable_HR",
+	"prognostic_variable_Pval",
 	"gene_data_coef",
 	"gene_data_HR",
 	"gene_data_Pval",
-	"metagene:gene_data_coef",
-	"metagene:gene_data_HR",
-	"metagene:gene_data_Pval",
+	"prognostic_variable:gene_data_coef",
+	"prognostic_variable:gene_data_HR",
+	"prognostic_variable:gene_data_Pval",
 	"warnings"
 	)
 	output=rep(NA,length(column_names))
 	names(output)=column_names
 	tryCatch({
 		gene_single=unlist(gene_data[gene,])
-		data_subset=cbind(clinical,metagene=as.vector(metagene_mean),gene_data=gene_single)
+		data_subset=cbind(survival_data,prognostic_variable=as.vector(prognostic_variable_d),gene_data=gene_single)
 		# 
 		output['mean']=mean(gene_single)
 		output['P5%']=quantile(gene_single, c(0.05))
 		output['P95%']=quantile(gene_single, c(0.95))
 		output["Diff P95%_5%"]=quantile(gene_single, c(0.95)) - quantile(gene_single, c(0.05))
-		output["R"]=cor(gene_single, metagene_mean, method="pearson")
+		output["R"]=cor(gene_single, prognostic_variable_d, method="pearson")
 		gene_tertiles=categorize_tertiles(gene_single)
-		metagene_mean_tertiles=categorize_tertiles(metagene_mean)
-		cox_formula2=gsub("metagene","metagene+gene_data+metagene:gene_data",cox_formula)
-		res.cox = coxph(as.formula(cox_formula2), data = data_subset)
+		prognostic_variable_d_tertiles=categorize_tertiles(prognostic_variable_d)
+		cox_formula2=gsub("prognostic_variable","prognostic_variable+gene_data+prognostic_variable:gene_data",cox_formula)
+		res.cox = survival::coxph(as.formula(cox_formula2), data = data_subset)
 		sres.cox= summary(res.cox)
-		output["metagene_coef"]=sres.cox$coef["metagene","coef"]
-		output["metagene_HR"]=sres.cox$coef["metagene","exp(coef)"]
-		output["metagene_Pval"]=sres.cox$coef["metagene","Pr(>|z|)"]
+		output["prognostic_variable_coef"]=sres.cox$coef["prognostic_variable","coef"]
+		output["prognostic_variable_HR"]=sres.cox$coef["prognostic_variable","exp(coef)"]
+		output["prognostic_variable_Pval"]=sres.cox$coef["prognostic_variable","Pr(>|z|)"]
 		output["gene_data_coef"]=sres.cox$coef["gene_data","coef"]
 		output["gene_data_HR"]=sres.cox$coef["gene_data","exp(coef)"]
 		output["gene_data_Pval"]=sres.cox$coef["gene_data","Pr(>|z|)"]
-		output["metagene:gene_data_coef"]=sres.cox$coef["metagene:gene_data","coef"]
-		output["metagene:gene_data_HR"]=sres.cox$coef["metagene:gene_data","exp(coef)"]
-		output["metagene:gene_data_Pval"]=sres.cox$coef["metagene:gene_data","Pr(>|z|)"]
-#		res.cox = survfit(as.formula(cox_formula2), data = data_subset)
+		output["prognostic_variable:gene_data_coef"]=sres.cox$coef["prognostic_variable:gene_data","coef"]
+		output["prognostic_variable:gene_data_HR"]=sres.cox$coef["prognostic_variable:gene_data","exp(coef)"]
+		output["prognostic_variable:gene_data_Pval"]=sres.cox$coef["prognostic_variable:gene_data","Pr(>|z|)"]
+#		res.cox = survival::survfit(as.formula(cox_formula2), data = data_subset)
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	return(output)
 }
 
-constru_single_Mclust=function(gene, clinical, gene_data, metagene_mean,cox_formula){
-	require(survival)
-	require(survminer)
-	require(mclust)
+constru_single_Mclust=function(gene, survival_data, gene_data, prognostic_variable_d,cox_formula){
+	suppressMessages(require(survival))
+	suppressMessages(require(survminer))
+	suppressMessages(require(mclust))
 	# output format
 	column_names<-c("mean","P5%","P95%","Diff P95%_5%","R",
 	"nGroups",
@@ -97,19 +87,19 @@ constru_single_Mclust=function(gene, clinical, gene_data, metagene_mean,cox_form
 	output=rep(NA,length(column_names))
 	names(output)=column_names
 	gene_single=unlist(gene_data[gene,])
-	data_subset=cbind(clinical,metagene=as.numeric(metagene_mean),gene_data=gene_single)
+	data_subset=cbind(survival_data,prognostic_variable=as.numeric(prognostic_variable_d),gene_data=gene_single)
 	#
 	gene_tertiles=categorize_tertiles(gene_single)
-	metagene_mean_tertiles=categorize_tertiles(metagene_mean)
-	mydata=data_subset[,c("metagene","gene_data")]
+	prognostic_variable_d_tertiles=categorize_tertiles(prognostic_variable_d)
+	mydata=data_subset[,c("prognostic_variable","gene_data")]
 	# 
 	output['mean']=mean(gene_single)
 	output['P5%']=quantile(gene_single, c(0.05))
 	output['P95%']=quantile(gene_single, c(0.95))
 	output["Diff P95%_5%"]=quantile(gene_single, c(0.95)) - quantile(gene_single, c(0.05))
-	output["R"]=cor(gene_single, metagene_mean, method="pearson")
+	output["R"]=cor(gene_single, prognostic_variable_d, method="pearson")
 	#Model-based clustering based on parameterized finite Gaussian mixture models
-	fit <- Mclust(mydata,verbose=F)
+	fit <- mclust::Mclust(mydata,verbose=F)
 	output[gsub("^","Group_",colnames(gene_data))]=fit$classification
 	nGroups=max(fit$classification)
 	output["nGroups"]=nGroups
@@ -119,10 +109,10 @@ constru_single_Mclust=function(gene, clinical, gene_data, metagene_mean,cox_form
 	for(group in 1:nGroups){
 	tryCatch({
 		keep= (output[gsub("^","Group_",rownames(data_subset))]==group)
-		res.cox = coxph(as.formula(cox_formula), data = data_subset[keep,])
+		res.cox = survival::coxph(as.formula(cox_formula), data = data_subset[keep,])
 		sres.cox= summary(res.cox)
-		All_Pval=c(All_Pval,sres.cox$coef["metagene","Pr(>|z|)"])
-		All_HR=c(All_HR,sres.cox$coef["metagene","exp(coef)"])
+		All_Pval=c(All_Pval,sres.cox$coef["prognostic_variable","Pr(>|z|)"])
+		All_HR=c(All_HR,sres.cox$coef["prognostic_variable","exp(coef)"])
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	}
 	output["All_Pval"]=paste(All_Pval,sep=",",collapse=",")
@@ -162,9 +152,9 @@ constru_single_Mclust=function(gene, clinical, gene_data, metagene_mean,cox_form
 	return(output)
 }
 
-constru_single=function(gene, clinical, gene_data, metagene_mean,cox_formula){
-	require(survival)
-	require(survminer)
+constru_single=function(gene, survival_data, gene_data, prognostic_variable_d,cox_formula){
+	suppressMessages(require(survival))
+	suppressMessages(require(survminer))
 	# output format
 	column_names<-c("mean","P5%","P95%","Diff P95%_5%","R","PS1","PS2","PS3",
 	"gT1 Pval","gT1 HR",
@@ -184,37 +174,37 @@ constru_single=function(gene, clinical, gene_data, metagene_mean,cox_formula){
 	# subset
 	tryCatch({
 		hold=unlist(gene_data[gene,])
-		data_subset=cbind(clinical,metagene=as.vector(metagene_mean))
+		data_subset=cbind(survival_data,prognostic_variable=as.vector(prognostic_variable_d))
 		# 
 		output['mean']=mean(hold)
 		output['P5%']=quantile(hold, c(0.05))
 		output['P95%']=quantile(hold, c(0.95))
 		output["Diff P95%_5%"]=quantile(hold, c(0.95)) - quantile(hold, c(0.05))
-		output["R"]=cor(hold, metagene_mean, method="pearson")
+		output["R"]=cor(hold, prognostic_variable_d, method="pearson")
 		#
 		gene_tertiles=categorize_tertiles(hold)
-		metagene_mean_tertiles=categorize_tertiles(metagene_mean)
+		prognostic_variable_d_tertiles=categorize_tertiles(prognostic_variable_d)
 		# 
 		gt_cutoff=1
 		keep=(gene_tertiles == gt_cutoff)
-		res.cox = coxph(as.formula(cox_formula), data = data_subset[keep,])
+		res.cox = survival::coxph(as.formula(cox_formula), data = data_subset[keep,])
 		sres.cox= summary(res.cox)
-		output["gT1 Pval"]=sres.cox$coef["metagene","Pr(>|z|)"]
-		output["gT1 HR"]=sres.cox$coef["metagene","exp(coef)"]
+		output["gT1 Pval"]=sres.cox$coef["prognostic_variable","Pr(>|z|)"]
+		output["gT1 HR"]=sres.cox$coef["prognostic_variable","exp(coef)"]
 		# 
 		gt_cutoff=2
 		keep=(gene_tertiles == gt_cutoff)
-		res.cox = coxph(as.formula(cox_formula), data = data_subset[keep,])
+		res.cox = survival::coxph(as.formula(cox_formula), data = data_subset[keep,])
 		sres.cox= summary(res.cox)
-		output["gT2 Pval"]=sres.cox$coef["metagene","Pr(>|z|)"]
-		output["gT2 HR"]=sres.cox$coef["metagene","exp(coef)"]
+		output["gT2 Pval"]=sres.cox$coef["prognostic_variable","Pr(>|z|)"]
+		output["gT2 HR"]=sres.cox$coef["prognostic_variable","exp(coef)"]
 		# 
 		gt_cutoff=3
 		keep=(gene_tertiles == gt_cutoff)
-		res.cox = coxph(as.formula(cox_formula), data = data_subset[keep,])
+		res.cox = survival::coxph(as.formula(cox_formula), data = data_subset[keep,])
 		sres.cox= summary(res.cox)
-		output["gT3 Pval"]=sres.cox$coef["metagene","Pr(>|z|)"]
-		output["gT3 HR"]=sres.cox$coef["metagene","exp(coef)"]
+		output["gT3 Pval"]=sres.cox$coef["prognostic_variable","Pr(>|z|)"]
+		output["gT3 HR"]=sres.cox$coef["prognostic_variable","exp(coef)"]
 		#
 		output["PS1"]=
 			(-log10(output["gT1 Pval"])/output["gT1 HR"]) - 
@@ -228,110 +218,173 @@ constru_single=function(gene, clinical, gene_data, metagene_mean,cox_formula){
 		#
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	tryCatch({
-		data_subset_tertile=cbind(clinical,metagene=as.vector(metagene_mean_tertiles))
+		data_subset_tertile=cbind(survival_data,prognostic_variable=as.vector(prognostic_variable_d_tertiles))
 		#
 		gt_cutoff=1
 		keep=(gene_tertiles == gt_cutoff)
-		res.cox = survfit(as.formula(cox_formula), data = data_subset_tertile[keep,])
-		output["gT1sT1"]=res.cox['metagene=1']$n
-		output["gT1sT1 3 year"]=summary(res.cox['metagene=1'],time=c(3),extend=T)$surv
-		output["gT1sT1 6 year"]=summary(res.cox['metagene=1'],time=c(6),extend=T)$surv
+		res.cox = survival::survfit(as.formula(cox_formula), data = data_subset_tertile[keep,])
+		output["gT1sT1"]=res.cox['prognostic_variable=1']$n
+		output["gT1sT1 3 year"]=summary(res.cox['prognostic_variable=1'],time=c(3),extend=T)$surv
+		output["gT1sT1 6 year"]=summary(res.cox['prognostic_variable=1'],time=c(6),extend=T)$surv
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	tryCatch({
-		output["gT1sT2"]=res.cox['metagene=2']$n
-		output["gT1sT2 3 year"]=summary(res.cox['metagene=2'],time=c(3),extend=T)$surv
-		output["gT1sT2 6 year"]=summary(res.cox['metagene=2'],time=c(6),extend=T)$surv
+		output["gT1sT2"]=res.cox['prognostic_variable=2']$n
+		output["gT1sT2 3 year"]=summary(res.cox['prognostic_variable=2'],time=c(3),extend=T)$surv
+		output["gT1sT2 6 year"]=summary(res.cox['prognostic_variable=2'],time=c(6),extend=T)$surv
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	tryCatch({
-		output["gT1sT3"]=res.cox['metagene=3']$n
-		output["gT1sT3 3 year"]=summary(res.cox['metagene=3'],time=c(3),extend=T)$surv
-		output["gT1sT3 6 year"]=summary(res.cox['metagene=3'],time=c(6),extend=T)$surv
+		output["gT1sT3"]=res.cox['prognostic_variable=3']$n
+		output["gT1sT3 3 year"]=summary(res.cox['prognostic_variable=3'],time=c(3),extend=T)$surv
+		output["gT1sT3 6 year"]=summary(res.cox['prognostic_variable=3'],time=c(6),extend=T)$surv
 		#
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	tryCatch({
 		gt_cutoff=2
 		keep=(gene_tertiles == gt_cutoff)
-		res.cox = survfit(as.formula(cox_formula), data = data_subset_tertile[keep,])
+		res.cox = survival::survfit(as.formula(cox_formula), data = data_subset_tertile[keep,])
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	tryCatch({
-		output["gT2sT1"]=res.cox['metagene=1']$n
-		output["gT2sT1 3 year"]=summary(res.cox['metagene=1'],time=c(3),extend=T)$surv
-		output["gT2sT1 6 year"]=summary(res.cox['metagene=1'],time=c(6),extend=T)$surv
+		output["gT2sT1"]=res.cox['prognostic_variable=1']$n
+		output["gT2sT1 3 year"]=summary(res.cox['prognostic_variable=1'],time=c(3),extend=T)$surv
+		output["gT2sT1 6 year"]=summary(res.cox['prognostic_variable=1'],time=c(6),extend=T)$surv
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	tryCatch({
-		output["gT2sT2"]=res.cox['metagene=2']$n
-		output["gT2sT2 3 year"]=summary(res.cox['metagene=2'],time=c(3),extend=T)$surv
-		output["gT2sT2 6 year"]=summary(res.cox['metagene=2'],time=c(6),extend=T)$surv
+		output["gT2sT2"]=res.cox['prognostic_variable=2']$n
+		output["gT2sT2 3 year"]=summary(res.cox['prognostic_variable=2'],time=c(3),extend=T)$surv
+		output["gT2sT2 6 year"]=summary(res.cox['prognostic_variable=2'],time=c(6),extend=T)$surv
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	tryCatch({
-		output["gT2sT3"]=res.cox['metagene=3']$n
-		output["gT2sT3 3 year"]=summary(res.cox['metagene=3'],time=c(3),extend=T)$surv
-		output["gT2sT3 6 year"]=summary(res.cox['metagene=3'],time=c(6),extend=T)$surv
+		output["gT2sT3"]=res.cox['prognostic_variable=3']$n
+		output["gT2sT3 3 year"]=summary(res.cox['prognostic_variable=3'],time=c(3),extend=T)$surv
+		output["gT2sT3 6 year"]=summary(res.cox['prognostic_variable=3'],time=c(6),extend=T)$surv
 		#
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	tryCatch({
 		gt_cutoff=3
 		keep=(gene_tertiles == gt_cutoff)
-		res.cox = survfit(as.formula(cox_formula), data = data_subset_tertile[keep,])
+		res.cox = survival::survfit(as.formula(cox_formula), data = data_subset_tertile[keep,])
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	tryCatch({
-		output["gT3sT1"]=res.cox['metagene=1']$n
-		output["gT3sT1 3 year"]=summary(res.cox['metagene=1'],time=c(3),extend=T)$surv
-		output["gT3sT1 6 year"]=summary(res.cox['metagene=1'],time=c(6),extend=T)$surv
+		output["gT3sT1"]=res.cox['prognostic_variable=1']$n
+		output["gT3sT1 3 year"]=summary(res.cox['prognostic_variable=1'],time=c(3),extend=T)$surv
+		output["gT3sT1 6 year"]=summary(res.cox['prognostic_variable=1'],time=c(6),extend=T)$surv
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	tryCatch({
-		output["gT3sT2"]=res.cox['metagene=2']$n
-		output["gT3sT2 3 year"]=summary(res.cox['metagene=2'],time=c(3),extend=T)$surv
-		output["gT3sT2 6 year"]=summary(res.cox['metagene=2'],time=c(6),extend=T)$surv
+		output["gT3sT2"]=res.cox['prognostic_variable=2']$n
+		output["gT3sT2 3 year"]=summary(res.cox['prognostic_variable=2'],time=c(3),extend=T)$surv
+		output["gT3sT2 6 year"]=summary(res.cox['prognostic_variable=2'],time=c(6),extend=T)$surv
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	tryCatch({
-		output["gT3sT3"]=res.cox['metagene=3']$n
-		output["gT3sT3 3 year"]=summary(res.cox['metagene=3'],time=c(3),extend=T)$surv
-		output["gT3sT3 6 year"]=summary(res.cox['metagene=3'],time=c(6),extend=T)$surv
+		output["gT3sT3"]=res.cox['prognostic_variable=3']$n
+		output["gT3sT3 3 year"]=summary(res.cox['prognostic_variable=3'],time=c(3),extend=T)$surv
+		output["gT3sT3 6 year"]=summary(res.cox['prognostic_variable=3'],time=c(6),extend=T)$surv
 	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
 	return(output)
 }
 
-constru_single_mode=function(gene, clinical, gene_data, metagene_mean,cox_formula,mode){
-	if(mode=="tertile"){
-		return(constru_single(gene, clinical, gene_data, metagene_mean,cox_formula))
-	}
-	if(mode=="continuous"){
-		return(constru_single_continuous(gene, clinical, gene_data, metagene_mean,cox_formula))
-	}
-	if(mode=="Mclust"){
-		return(constru_single_Mclust(gene, clinical, gene_data, metagene_mean,cox_formula))
-	}
-}
+#constru_single_mode=function(gene, survival_data, gene_data, prognostic_variable_d,cox_formula,mode){
+#	if(mode=="tertile"){
+#		return(constru_single(gene, survival_data, gene_data, prognostic_variable_d,cox_formula))
+#	}
+#	if(mode=="continuous"){
+#		return(constru_single_continuous(gene, survival_data, gene_data, prognostic_variable_d,cox_formula))
+#	}
+#	if(mode=="Mclust"){
+#		return(constru_single_Mclust(gene, survival_data, gene_data, prognostic_variable_d,cox_formula))
+#	}
+#}
 
-clinical_u=NULL
+survival_data_u=NULL
 gene_data_u=NULL
-metagene_mean_u=NULL
+prognostic_variable_d_u=NULL
 cox_formula_u=NULL
 
 #' constru
 #'
-#' Cox regression after separating metagene_mean's tertile category
-#' @param clinical, gene_data, metagene_mean,cox_formula,ncores,mode
-#' @return a table detailing ...
+#' Cox regression after separating prognistic variable by gene expression tertiles
+#' @param survival_data A data frame with the samples as rows and survival time and event as columns.
+#' @param gene_data A data frame sample names as columns and gene expression as rows.
+#' @param prognostic_variable_d A vector with the prognostic variable data. It should be of the same length and order as the row of the survival data.
+#' @param cox_formula Formula used for cox regression. Example: 
+#' \itemize{
+#'   \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable \cr
+#' }
+#'   If additional prognostic factors need to be added to the model, add it as a column in the survival data and use its column name in the formula. Example:
+#' \itemize{
+#'   \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable + AGE \cr
+#' }
+#' @param ncores The number of cores used during multithreading.
+#' @return a table with columns:
+#' \itemize{
+#'   \item mean - gene expression mean
+#'   \item P5\% - 5\% confidence interval of the gene expression
+#'   \item P95\% - 95\% confidence interval of the gene expression
+#'   \item Diff P95\%_5\% - difference between the 95\% and 5\% confidence interval
+#'   \item R - pearson correlation between the gene expression and prognostic variable
+#'   \item PS1 - parity score 1 \cr
+#'      (-log10("Pvalue of gene Tertile 1")/"HR of gene Tertile 1") - \cr
+#'      (-log10("Pvalue of gene Tertile 3")/"HR of gene Tertile 3")   \cr
+#'   \item PS2 - parity score 2
+#'      (log("Pvalue of gene Tertile 1")*("HR of gene Tertile 1"-1)) - \cr
+#'      (log("Pvalue of gene Tertile 3")*("HR of gene Tertile 3"-1))   \cr
+#'   \item PS3 - parity score 3
+#'      (log("Pvalue of gene Tertile 1")*log("HR of gene Tertile 1"))- \cr
+#'      (log("Pvalue of gene Tertile 3")*log("HR of gene Tertile 3"))  \cr
+#'   \item gT1 Pval - Pvalue of gene Tertile 1
+#'   \item gT1 HR - HR of gene Tertile 1
+#'   \item gT1sT1 - 
+#'   \item gT1sT1 3 year - 
+#'   \item gT1sT1 6 year - 
+#'   \item gT1sT2 - 
+#'   \item gT1sT2 3 year - 
+#'   \item gT1sT2 6 year - 
+#'   \item gT1sT3 - 
+#'   \item gT1sT3 3 year - 
+#'   \item gT1sT3 6 year - 
+#'   \item gT2 Pval - 
+#'   \item gT2 HR - 
+#'   \item gT2sT1 - 
+#'   \item gT2sT1 3 year - 
+#'   \item gT2sT1 6 year - 
+#'   \item gT2sT2 - 
+#'   \item gT2sT2  - 
+#'   \item 3 year - 
+#'   \item gT2sT2 6 year - 
+#'   \item gT2sT3 - 
+#'   \item gT2sT3 3 year - 
+#'   \item gT2sT3 6 year - 
+#'   \item gT3 Pval - 
+#'   \item gT3 HR - 
+#'   \item gT3sT1 - 
+#'   \item gT3sT1 3 year - 
+#'   \item gT3sT1 6 year - 
+#'   \item gT3sT2 - 
+#'   \item gT3sT2 3 year - 
+#'   \item gT3sT2 6 year - 
+#'   \item gT3sT3 - 
+#'   \item gT3sT3 3 year - 
+#'   \item gT3sT3 6 year - 
+#'   \item warnings - 
+#' }
 #' @examples 
 #' todo
 #' @export
-constru<-function(clinical, gene_data, metagene_mean,cox_formula,ncores,mode){
+constru<-function(survival_data, gene_data, prognostic_variable_d,cox_formula,ncores){
+	suppressMessages(require(parallel))
 	gi=rownames(gene_data)
 	oo=NULL
 	if( Sys.info()[['sysname']] == 'Windows' ){
-		clinical_u=clinical
+		survival_data_u=survival_data
 		gene_data_u=gene_data
-		metagene_mean_u=metagene_mean
+		prognostic_variable_d_u=prognostic_variable_d
 		cox_formula_u=cox_formula
-		cl <- makeCluster(ncores)
-		clusterExport(cl, varlist=c("categorize_tertiles","constru_single_mode","clinical_u","gene_data_u","metagene_mean_u","cox_formula_u"))
-		clusterEvalQ(cl, { library(survival); library(survminer); library(parallel); library(mclust); })
-		oo=parLapply(cl,gi,function(x){ constru_single_mode(x,clinical_u,gene_data_u,metagene_mean_u,cox_formula_u,mode) })
-		stopCluster(cl)
+		cl <- parallel::makeCluster(ncores)
+		parallel::clusterExport(cl, varlist=c("categorize_tertiles","constru_single","survival_data_u","gene_data_u","prognostic_variable_d_u","cox_formula_u"))
+		parallel::clusterEvalQ(cl, { library(survival); library(survminer); library(parallel); library(mclust); })
+		oo=parallel::parLapply(cl,gi,function(x){ constru_single(x,survival_data_u,gene_data_u,prognostic_variable_d_u,cox_formula_u) })
+		parallel::stopCluster(cl)
 	} else {
-		oo=mclapply(gi,function(x){constru_single_mode(x,clinical,gene_data,metagene_mean,cox_formula,mode)} ,mc.cores=ncores)
+		oo=parallel::mclapply(gi,function(x){constru_single(x,survival_data,gene_data,prognostic_variable_d,cox_formula)} ,mc.cores=ncores)
 	}
 	oo=t(as.data.frame(oo))
 	rownames(oo)=gi

@@ -4,16 +4,78 @@
 \alias{constru}
 \title{constru}
 \usage{
-constru(clinical, gene_data, metagene_mean, cox_formula, ncores, mode)
+constru(survival_data, gene_data, prognostic_variable_d, cox_formula, ncores)
 }
 \arguments{
-\item{clinical, }{gene_data, metagene_mean,cox_formula,ncores,mode}
+\item{survival_data}{A data frame with the samples as rows and survival time and event as columns.}
+
+\item{gene_data}{A data frame sample names as columns and gene expression as rows.}
+
+\item{prognostic_variable_d}{A vector with the prognostic variable data. It should be of the same length and order as the row of the survival data.}
+
+\item{cox_formula}{Formula used for cox regression. Example: 
+\itemize{
+  \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable \cr
+}
+  If additional prognostic factors need to be added to the model, add it as a column in the survival data and use its column name in the formula. Example:
+\itemize{
+  \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable + AGE \cr
+}}
+
+\item{ncores}{The number of cores used during multithreading.}
 }
 \value{
-a table detailing ...
+a table with columns:
+\itemize{
+  \item mean - gene expression mean
+  \item P5\% - 5% confidence interval of the gene expression
+  \item P95\% - 95% confidence interval of the gene expression
+  \item Diff P95\%_5\% - difference between the 95% and 5% confidence interval
+  \item R - pearson correlation between the gene expression and prognostic variable
+  \item PS1 - parity score 1 \cr
+      (-log10("Pvalue of gene Tertile 1")/"HR of gene Tertile 1") - \cr
+      (-log10("Pvalue of gene Tertile 3")/"HR of gene Tertile 3")   \cr
+  \item PS2 - parity score 2
+  \item PS3 - parity score 3
+  \item gT1 Pval - 
+  \item gT1 HR - 
+  \item gT1sT1 - 
+  \item gT1sT1 3 year - 
+  \item gT1sT1 6 year - 
+  \item gT1sT2 - 
+  \item gT1sT2 3 year - 
+  \item gT1sT2 6 year - 
+  \item gT1sT3 - 
+  \item gT1sT3 3 year - 
+  \item gT1sT3 6 year - 
+  \item gT2 Pval - 
+  \item gT2 HR - 
+  \item gT2sT1 - 
+  \item gT2sT1 3 year - 
+  \item gT2sT1 6 year - 
+  \item gT2sT2 - 
+  \item gT2sT2  - 
+  \item 3 year - 
+  \item gT2sT2 6 year - 
+  \item gT2sT3 - 
+  \item gT2sT3 3 year - 
+  \item gT2sT3 6 year - 
+  \item gT3 Pval - 
+  \item gT3 HR - 
+  \item gT3sT1 - 
+  \item gT3sT1 3 year - 
+  \item gT3sT1 6 year - 
+  \item gT3sT2 - 
+  \item gT3sT2 3 year - 
+  \item gT3sT2 6 year - 
+  \item gT3sT3 - 
+  \item gT3sT3 3 year - 
+  \item gT3sT3 6 year - 
+  \item warnings - 
+}
 }
 \description{
-Cox regression after separating metagene_mean's tertile category
+Cox regression after separating prognistic variable by gene expression tertiles
 }
 \examples{
 todo

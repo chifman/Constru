@@ -1,0 +1,14 @@
+Hi everyone,
+
+I've uploaded the R-package version of CONSTRU to Julia's github (https://github.com/chifman/Constru)
+
+I've moved the previous CONSTRU programs into https://github.com/chifman/Constru/tree/main/extra_constru_app
+
+PS2
+
+prognostic_variable
+	metagene
+
+
+Thanks,
+Ming
