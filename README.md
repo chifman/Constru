@@ -2,17 +2,17 @@
 
 ### Introduction
 
-This algorithm measures how the relative expression of each gene enhances or antagonizes the association between a prognostic marker and patient survival.
+This algorithm measures how the relative expression of each gene comprising a tumor gene expression data matrix enhances or antagonizes the association between a prognostic variable and patient survival.
 
-Three different strategies were used.
+Three different strategies may be employed.
 
 **Strategy 1: "constru_continuous"**
 
-The simplest method is to include the association as a interaction term in the cox regression. 
+The most straightforward approach is to model each gene’s effect on the prognostic variable as an interaction term in cox regression analysis.
 
 **Strategy 2: "constru"**
 
-Cox regression assumes that continuous predictors have a linear relationship with the outcome. However, multiple studies have shown that the prognostic and predictive power of immune signatures may be restricted to distinct tumor subgroups with favorable immunogenic properties. The discrete partitions of the subgroups often result in non-continuous relationships.
+Cox regression assumes that continuous predictors have a linear relationship with the outcome. However, multiple tumor profiling studies have shown that the prognostic or predictive power of a variable may be restricted to a distinct tumor subgroup with compatible molecular properties. The discrete partitions between subgroups often result in non-continuous relationships.
 
 As such, the second method separates the samples by gene expression tertile before performing cox regression. The results of the cox regression of the first and third tertile is used to calculate a parity score to quantify the effect. The three parity scores calculated are as follows:
 
@@ -30,11 +30,11 @@ PS3= \
       (log("cox regression Pvalue of gene Tertile 3")*log("cox regression Hazard ratio of gene Tertile 3"))
 ```
  
-Parity score PS1 is used to rank the genes by its effect on the prognostic marker in the paper _A patient stratification signature mirrors the immunogenic potential of high grade serous ovarian cancers. [Journal](link)_. Higher parity scores equate with genes that have greater Prognostic variable - survival associations in the first tertile, whereas lower parity scores equate with genes that have greater Prognostic variable - survival associations in the third tertile.
+Parity score PS1 is used to rank the genes by its effect on the prognostic variable in the paper _A patient stratification signature mirrors the immunogenic potential of high grade serous ovarian cancers. [Journal](link)_. Higher parity scores equate with genes that have greater prognostic variable - survival associations in the first tertile, whereas lower parity scores equate with genes that have greater prognostic variable - survival associations in the third tertile.
 
 **Strategy 3: "constru_kmeans"**
 
-Separating by tertiles is a simple way to categorize genes by high and low expression. However, the gene's behavior might now follow these specific divisions. 
+Separating by tertiles is a simple way to categorize genes by high and low expression. However, the gene's behavior might not follow these specific divisions.
 
 To remove this assumption, kmeans clustering is used to determine the division between a set number of groups. The exact number of groups can be specified using the option ngroups.
 
@@ -70,10 +70,10 @@ install_github("chifman/Constru")
     A data frame with survival data with the samples as rows and survival time and event as columns.
 
 2. Gene expression data. 
-    A data frame with normalized gene counts (CPM/RPKM), where the columns are sample names and rows are genes.
+    A data frame with normalized gene expression measurements or counts (eg, CPM/RPKM), where the columns are sample names and rows are genes.
 
 3. Prognostic variable
-    A vector with the prognostic variable data. It should be of the same length and order as the row of the survival data.
+    A vector with the prognostic variable values. It should be of the same length and order as the row of the survival data.
 
 4. Formula used for cox regression. Example: 
     Surv( OS_TIME , OS_Event ) ~ prognostic_variable 
