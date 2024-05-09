@@ -1,0 +1,1 @@
+[{"name":"app.R","content":"library(shiny)\n\nlibrary(survival)\nlibrary(survminer)\nlibrary(parallel)\nlibrary(promises)\n\nui <- fluidPage(\n  \"Hello, world!\"\n)\nserver <- function(input, output, session) {\n}\nshinyApp(ui, server)\n","type":"text"}]

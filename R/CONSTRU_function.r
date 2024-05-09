@@ -71,166 +71,166 @@ constru_single_continuous=function(gene, survival_data, gene_data, prognostic_va
 	return(output)
 }
 
-constru_single_kmeans=function(gene, survival_data, gene_data, prognostic_variable_d,cox_formula,nGroups=3){
-	suppressMessages(require(survival))
-	suppressMessages(require(survminer))
-	suppressMessages(require(mclust))
-	# output format
-	column_names<-c("mean","P5%","P95%","Diff P95%_5%","R",
-	"nGroups",
-	"PS1","PS1_max_group","PS1_min_group",
-	"PS2","PS2_max_group","PS2_min_group",
-	"PS3","PS3_max_group","PS3_min_group",
-	"All_Pval","All_HR",
-	gsub("^","Group_",colnames(gene_data)),
-	"warnings")
-	output=rep(NA,length(column_names))
-	names(output)=column_names
-	gene_single=unlist(gene_data[gene,])
-	data_subset=cbind(survival_data,prognostic_variable=as.numeric(prognostic_variable_d),gene_data=gene_single)
-	#
-	gene_tertiles=categorize_tertiles(gene_single)
-	prognostic_variable_d_tertiles=categorize_tertiles(prognostic_variable_d)
-	mydata=data_subset[,c("prognostic_variable","gene_data")]
-	# 
-	output['mean']=mean(gene_single)
-	output['P5%']=quantile(gene_single, c(0.05))
-	output['P95%']=quantile(gene_single, c(0.95))
-	output["Diff P95%_5%"]=quantile(gene_single, c(0.95)) - quantile(gene_single, c(0.05))
-	output["R"]=cor(gene_single, prognostic_variable_d, method="pearson")
-	#Model-based clustering based on parameterized finite Gaussian mixture models
-	kfit=kmeans(mydata,nGroups)
-	output[gsub("^","Group_",colnames(gene_data))]=kfit$cluster
-	output["nGroups"]=nGroups
-	#
-	All_Pval=c()
-	All_HR=c()
-	for(group in 1:nGroups){
-	tryCatch({
-		keep= (output[gsub("^","Group_",rownames(data_subset))]==group)
-		res.cox = survival::coxph(as.formula(cox_formula), data = data_subset[keep,])
-		sres.cox= summary(res.cox)
-		All_Pval=c(All_Pval,sres.cox$coef["prognostic_variable","Pr(>|z|)"])
-		All_HR=c(All_HR,sres.cox$coef["prognostic_variable","exp(coef)"])
-	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
-	}
-	output["All_Pval"]=paste(All_Pval,sep=",",collapse=",")
-	output["All_HR"]=paste(All_HR,sep=",",collapse=",")
-	tryCatch({
-	PS1_part=sapply(1:length(All_Pval),function(g){
-		(-log10(All_Pval[g])/All_HR[g])
-	})
-	PS1_max_group=which(PS1_part==max(PS1_part,na.rm=T))[1]
-	PS1_min_group=which(PS1_part==min(PS1_part,na.rm=T))[1]
-	output['PS1_max_group']=PS1_max_group
-	output['PS1_min_group']=PS1_min_group
-	output['PS1']=
-		(-log10(All_Pval[PS1_max_group])/All_HR[PS1_max_group])-
-		(-log10(All_Pval[PS1_min_group])/All_HR[PS1_min_group])
-	PS2_part=sapply(1:length(All_Pval),function(g){
-		(log(All_Pval[g])*(All_HR[g]-1))
-	})
-	PS2_max_group=which(PS2_part==max(PS2_part,na.rm=T))[1]
-	PS2_min_group=which(PS2_part==min(PS2_part,na.rm=T))[1]
-	output['PS2_max_group']=PS2_max_group
-	output['PS2_min_group']=PS2_min_group
-	output['PS2']=
-		(log(All_Pval[PS2_max_group])*(All_HR[PS2_max_group]-1)) -
-		(log(All_Pval[PS2_min_group])*(All_HR[PS2_min_group]-1))
-	PS3_part=sapply(1:length(All_Pval),function(g){
-		(log(All_Pval[g])*log(All_HR[g]))
-	})
-	PS3_max_group=which(PS3_part==max(PS3_part,na.rm=T))[1]
-	PS3_min_group=which(PS3_part==min(PS3_part,na.rm=T))[1]
-	output['PS3_max_group']=PS3_max_group
-	output['PS3_min_group']=PS3_min_group
-	output['PS3']=
-		(log(All_Pval[PS3_max_group])*log(All_HR[PS3_max_group])) -
-		(log(All_Pval[PS3_min_group])*log(All_HR[PS3_min_group]))
-	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
-	return(output)
-}
-
-constru_single_Mclust=function(gene, survival_data, gene_data, prognostic_variable_d,cox_formula){
-	suppressMessages(require(survival))
-	suppressMessages(require(survminer))
-	suppressMessages(require(mclust))
-	# output format
-	column_names<-c("mean","P5%","P95%","Diff P95%_5%","R",
-	"nGroups",
-	"PS1","PS1_max_group","PS1_min_group",
-	"PS2","PS2_max_group","PS2_min_group",
-	"PS3","PS3_max_group","PS3_min_group",
-	"All_Pval","All_HR",
-	gsub("^","Group_",colnames(gene_data)),
-	"warnings")
-	output=rep(NA,length(column_names))
-	names(output)=column_names
-	gene_single=unlist(gene_data[gene,])
-	data_subset=cbind(survival_data,prognostic_variable=as.numeric(prognostic_variable_d),gene_data=gene_single)
-	#
-	gene_tertiles=categorize_tertiles(gene_single)
-	prognostic_variable_d_tertiles=categorize_tertiles(prognostic_variable_d)
-	mydata=data_subset[,c("prognostic_variable","gene_data")]
-	# 
-	output['mean']=mean(gene_single)
-	output['P5%']=quantile(gene_single, c(0.05))
-	output['P95%']=quantile(gene_single, c(0.95))
-	output["Diff P95%_5%"]=quantile(gene_single, c(0.95)) - quantile(gene_single, c(0.05))
-	output["R"]=cor(gene_single, prognostic_variable_d, method="pearson")
-	#Model-based clustering based on parameterized finite Gaussian mixture models
-	fit <- mclust::Mclust(mydata,verbose=F)
-	output[gsub("^","Group_",colnames(gene_data))]=fit$classification
-	nGroups=max(fit$classification)
-	output["nGroups"]=nGroups
-	#
-	All_Pval=c()
-	All_HR=c()
-	for(group in 1:nGroups){
-	tryCatch({
-		keep= (output[gsub("^","Group_",rownames(data_subset))]==group)
-		res.cox = survival::coxph(as.formula(cox_formula), data = data_subset[keep,])
-		sres.cox= summary(res.cox)
-		All_Pval=c(All_Pval,sres.cox$coef["prognostic_variable","Pr(>|z|)"])
-		All_HR=c(All_HR,sres.cox$coef["prognostic_variable","exp(coef)"])
-	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
-	}
-	output["All_Pval"]=paste(All_Pval,sep=",",collapse=",")
-	output["All_HR"]=paste(All_HR,sep=",",collapse=",")
-	tryCatch({
-	PS1_part=sapply(1:length(All_Pval),function(g){
-		(-log10(All_Pval[g])/All_HR[g])
-	})
-	PS1_max_group=which(PS1_part==max(PS1_part,na.rm=T))[1]
-	PS1_min_group=which(PS1_part==min(PS1_part,na.rm=T))[1]
-	output['PS1_max_group']=PS1_max_group
-	output['PS1_min_group']=PS1_min_group
-	output['PS1']=
-		(-log10(All_Pval[PS1_max_group])/All_HR[PS1_max_group])-
-		(-log10(All_Pval[PS1_min_group])/All_HR[PS1_min_group])
-	PS2_part=sapply(1:length(All_Pval),function(g){
-		(log(All_Pval[g])*(All_HR[g]-1))
-	})
-	PS2_max_group=which(PS2_part==max(PS2_part,na.rm=T))[1]
-	PS2_min_group=which(PS2_part==min(PS2_part,na.rm=T))[1]
-	output['PS2_max_group']=PS2_max_group
-	output['PS2_min_group']=PS2_min_group
-	output['PS2']=
-		(log(All_Pval[PS2_max_group])*(All_HR[PS2_max_group]-1)) -
-		(log(All_Pval[PS2_min_group])*(All_HR[PS2_min_group]-1))
-	PS3_part=sapply(1:length(All_Pval),function(g){
-		(log(All_Pval[g])*log(All_HR[g]))
-	})
-	PS3_max_group=which(PS3_part==max(PS3_part,na.rm=T))[1]
-	PS3_min_group=which(PS3_part==min(PS3_part,na.rm=T))[1]
-	output['PS3_max_group']=PS3_max_group
-	output['PS3_min_group']=PS3_min_group
-	output['PS3']=
-		(log(All_Pval[PS3_max_group])*log(All_HR[PS3_max_group])) -
-		(log(All_Pval[PS3_min_group])*log(All_HR[PS3_min_group]))
-	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
-	return(output)
-}
+#constru_single_kmeans=function(gene, survival_data, gene_data, prognostic_variable_d,cox_formula,nGroups=3){
+#	suppressMessages(require(survival))
+#	suppressMessages(require(survminer))
+#	suppressMessages(require(mclust))
+#	# output format
+#	column_names<-c("mean","P5%","P95%","Diff P95%_5%","R",
+#	"nGroups",
+#	"PS1","PS1_max_group","PS1_min_group",
+#	"PS2","PS2_max_group","PS2_min_group",
+#	"PS3","PS3_max_group","PS3_min_group",
+#	"All_Pval","All_HR",
+#	gsub("^","Group_",colnames(gene_data)),
+#	"warnings")
+#	output=rep(NA,length(column_names))
+#	names(output)=column_names
+#	gene_single=unlist(gene_data[gene,])
+#	data_subset=cbind(survival_data,prognostic_variable=as.numeric(prognostic_variable_d),gene_data=gene_single)
+#	#
+#	gene_tertiles=categorize_tertiles(gene_single)
+#	prognostic_variable_d_tertiles=categorize_tertiles(prognostic_variable_d)
+#	mydata=data_subset[,c("prognostic_variable","gene_data")]
+#	# 
+#	output['mean']=mean(gene_single)
+#	output['P5%']=quantile(gene_single, c(0.05))
+#	output['P95%']=quantile(gene_single, c(0.95))
+#	output["Diff P95%_5%"]=quantile(gene_single, c(0.95)) - quantile(gene_single, c(0.05))
+#	output["R"]=cor(gene_single, prognostic_variable_d, method="pearson")
+#	#Model-based clustering based on parameterized finite Gaussian mixture models
+#	kfit=kmeans(mydata,nGroups)
+#	output[gsub("^","Group_",colnames(gene_data))]=kfit$cluster
+#	output["nGroups"]=nGroups
+#	#
+#	All_Pval=c()
+#	All_HR=c()
+#	for(group in 1:nGroups){
+#	tryCatch({
+#		keep= (output[gsub("^","Group_",rownames(data_subset))]==group)
+#		res.cox = survival::coxph(as.formula(cox_formula), data = data_subset[keep,])
+#		sres.cox= summary(res.cox)
+#		All_Pval=c(All_Pval,sres.cox$coef["prognostic_variable","Pr(>|z|)"])
+#		All_HR=c(All_HR,sres.cox$coef["prognostic_variable","exp(coef)"])
+#	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
+#	}
+#	output["All_Pval"]=paste(All_Pval,sep=",",collapse=",")
+#	output["All_HR"]=paste(All_HR,sep=",",collapse=",")
+#	tryCatch({
+#	PS1_part=sapply(1:length(All_Pval),function(g){
+#		(-log10(All_Pval[g])/All_HR[g])
+#	})
+#	PS1_max_group=which(PS1_part==max(PS1_part,na.rm=T))[1]
+#	PS1_min_group=which(PS1_part==min(PS1_part,na.rm=T))[1]
+#	output['PS1_max_group']=PS1_max_group
+#	output['PS1_min_group']=PS1_min_group
+#	output['PS1']=
+#		(-log10(All_Pval[PS1_max_group])/All_HR[PS1_max_group])-
+#		(-log10(All_Pval[PS1_min_group])/All_HR[PS1_min_group])
+#	PS2_part=sapply(1:length(All_Pval),function(g){
+#		(log(All_Pval[g])*(All_HR[g]-1))
+#	})
+#	PS2_max_group=which(PS2_part==max(PS2_part,na.rm=T))[1]
+#	PS2_min_group=which(PS2_part==min(PS2_part,na.rm=T))[1]
+#	output['PS2_max_group']=PS2_max_group
+#	output['PS2_min_group']=PS2_min_group
+#	output['PS2']=
+#		(log(All_Pval[PS2_max_group])*(All_HR[PS2_max_group]-1)) -
+#		(log(All_Pval[PS2_min_group])*(All_HR[PS2_min_group]-1))
+#	PS3_part=sapply(1:length(All_Pval),function(g){
+#		(log(All_Pval[g])*log(All_HR[g]))
+#	})
+#	PS3_max_group=which(PS3_part==max(PS3_part,na.rm=T))[1]
+#	PS3_min_group=which(PS3_part==min(PS3_part,na.rm=T))[1]
+#	output['PS3_max_group']=PS3_max_group
+#	output['PS3_min_group']=PS3_min_group
+#	output['PS3']=
+#		(log(All_Pval[PS3_max_group])*log(All_HR[PS3_max_group])) -
+#		(log(All_Pval[PS3_min_group])*log(All_HR[PS3_min_group]))
+#	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
+#	return(output)
+#}
+#
+#constru_single_Mclust=function(gene, survival_data, gene_data, prognostic_variable_d,cox_formula){
+#	suppressMessages(require(survival))
+#	suppressMessages(require(survminer))
+#	suppressMessages(require(mclust))
+#	# output format
+#	column_names<-c("mean","P5%","P95%","Diff P95%_5%","R",
+#	"nGroups",
+#	"PS1","PS1_max_group","PS1_min_group",
+#	"PS2","PS2_max_group","PS2_min_group",
+#	"PS3","PS3_max_group","PS3_min_group",
+#	"All_Pval","All_HR",
+#	gsub("^","Group_",colnames(gene_data)),
+#	"warnings")
+#	output=rep(NA,length(column_names))
+#	names(output)=column_names
+#	gene_single=unlist(gene_data[gene,])
+#	data_subset=cbind(survival_data,prognostic_variable=as.numeric(prognostic_variable_d),gene_data=gene_single)
+#	#
+#	gene_tertiles=categorize_tertiles(gene_single)
+#	prognostic_variable_d_tertiles=categorize_tertiles(prognostic_variable_d)
+#	mydata=data_subset[,c("prognostic_variable","gene_data")]
+#	# 
+#	output['mean']=mean(gene_single)
+#	output['P5%']=quantile(gene_single, c(0.05))
+#	output['P95%']=quantile(gene_single, c(0.95))
+#	output["Diff P95%_5%"]=quantile(gene_single, c(0.95)) - quantile(gene_single, c(0.05))
+#	output["R"]=cor(gene_single, prognostic_variable_d, method="pearson")
+#	#Model-based clustering based on parameterized finite Gaussian mixture models
+#	fit <- mclust::Mclust(mydata,verbose=F)
+#	output[gsub("^","Group_",colnames(gene_data))]=fit$classification
+#	nGroups=max(fit$classification)
+#	output["nGroups"]=nGroups
+#	#
+#	All_Pval=c()
+#	All_HR=c()
+#	for(group in 1:nGroups){
+#	tryCatch({
+#		keep= (output[gsub("^","Group_",rownames(data_subset))]==group)
+#		res.cox = survival::coxph(as.formula(cox_formula), data = data_subset[keep,])
+#		sres.cox= summary(res.cox)
+#		All_Pval=c(All_Pval,sres.cox$coef["prognostic_variable","Pr(>|z|)"])
+#		All_HR=c(All_HR,sres.cox$coef["prognostic_variable","exp(coef)"])
+#	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
+#	}
+#	output["All_Pval"]=paste(All_Pval,sep=",",collapse=",")
+#	output["All_HR"]=paste(All_HR,sep=",",collapse=",")
+#	tryCatch({
+#	PS1_part=sapply(1:length(All_Pval),function(g){
+#		(-log10(All_Pval[g])/All_HR[g])
+#	})
+#	PS1_max_group=which(PS1_part==max(PS1_part,na.rm=T))[1]
+#	PS1_min_group=which(PS1_part==min(PS1_part,na.rm=T))[1]
+#	output['PS1_max_group']=PS1_max_group
+#	output['PS1_min_group']=PS1_min_group
+#	output['PS1']=
+#		(-log10(All_Pval[PS1_max_group])/All_HR[PS1_max_group])-
+#		(-log10(All_Pval[PS1_min_group])/All_HR[PS1_min_group])
+#	PS2_part=sapply(1:length(All_Pval),function(g){
+#		(log(All_Pval[g])*(All_HR[g]-1))
+#	})
+#	PS2_max_group=which(PS2_part==max(PS2_part,na.rm=T))[1]
+#	PS2_min_group=which(PS2_part==min(PS2_part,na.rm=T))[1]
+#	output['PS2_max_group']=PS2_max_group
+#	output['PS2_min_group']=PS2_min_group
+#	output['PS2']=
+#		(log(All_Pval[PS2_max_group])*(All_HR[PS2_max_group]-1)) -
+#		(log(All_Pval[PS2_min_group])*(All_HR[PS2_min_group]-1))
+#	PS3_part=sapply(1:length(All_Pval),function(g){
+#		(log(All_Pval[g])*log(All_HR[g]))
+#	})
+#	PS3_max_group=which(PS3_part==max(PS3_part,na.rm=T))[1]
+#	PS3_min_group=which(PS3_part==min(PS3_part,na.rm=T))[1]
+#	output['PS3_max_group']=PS3_max_group
+#	output['PS3_min_group']=PS3_min_group
+#	output['PS3']=
+#		(log(All_Pval[PS3_max_group])*log(All_HR[PS3_max_group])) -
+#		(log(All_Pval[PS3_min_group])*log(All_HR[PS3_min_group]))
+#	},error = function(cond){output["warnings"]=paste(output["warnings"],conditionMessage(cond))}) 
+#	return(output)
+#}
 
 constru_single=function(gene, survival_data, gene_data, prognostic_variable_d,cox_formula){
 	suppressMessages(require(survival))
@@ -540,127 +540,127 @@ constru_continuous<-function(survival_data, gene_data, prognostic_variable_d,cox
 	rownames(oo)=gi
 	return(oo)
 }
-
-#' constru_kmeans
-#'
-#' Cox regression after separating prognistic variable by gene expression tertiles
-#' @param survival_data A data frame with the samples as rows and survival time and event as columns.
-#' @param gene_data A data frame sample names as columns and gene expression as rows.
-#' @param prognostic_variable_d A vector with the prognostic variable data. It should be of the same length and order as the row of the survival data.
-#' @param cox_formula Formula used for cox regression. Example: 
-#' \itemize{
-#'   \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable \cr
-#' }
-#'   If additional prognostic factors need to be added to the model, add it as a column in the survival data and use its column name in the formula. Example:
-#' \itemize{
-#'   \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable + AGE \cr
-#' }
-#'   The program will automatically add the interaction term prognostic_variable:gene_data to the formula
-#' @param ncores The number of cores used during multithreading.
-#' @param ngroups The number of clusters k-means will find
-#' @return a table with columns:
-#' \itemize{
-#'   \item mean - gene expression mean
-#'   \item P5\% - 5\% confidence interval of the gene expression
-#'   \item P95\% - 95\% confidence interval of the gene expression
-#'   \item Diff P95\%_5\% - difference between the 95\% and 5\% confidence interval
-#'   \item R - pearson correlation between the gene expression and prognostic variable
-#'   \item nGroups - number of groups found
-#'   \item PS1 - max parity score 1
-#'   \item PS1_max_group - group used to generate PS1
-#'   \item PS1_min_group - group used to generate PS1
-#'   \item PS2 - max parity score 2
-#'   \item PS2_max_group - group used to generate PS2
-#'   \item PS2_min_group - group used to generate PS2
-#'   \item PS3 - max parity score 3
-#'   \item PS3_max_group - group used to generate PS3
-#'   \item PS3_min_group - group used to generate PS3
-#'   \item All_Pval - pvalues of each group
-#'   \item All_HR - Hazard ratio of each group
-#'   \item sample_names - for each sample, a column will be used to indicate which group the sample belongs to
-#'   \item warnings - 
-#' }
-#' @export
-constru_kmeans<-function(survival_data, gene_data, prognostic_variable_d,cox_formula,ncores,ngroups=3){
-	suppressMessages(require(parallel))
-	gi=rownames(gene_data)
-	oo=NULL
-	if( Sys.info()[['sysname']] == 'Windows' ){
-		survival_data_u=survival_data
-		gene_data_u=gene_data
-		prognostic_variable_d_u=prognostic_variable_d
-		cox_formula_u=cox_formula
-		cl <- parallel::makeCluster(ncores)
-		parallel::clusterExport(cl, varlist=c("categorize_tertiles","constru_single_kmeans","survival_data_u","gene_data_u","prognostic_variable_d_u","cox_formula_u"))
-		parallel::clusterEvalQ(cl, { library(survival); library(survminer); library(parallel); library(mclust); })
-		oo=parallel::parLapply(cl,gi,function(x){ constru_single_kmeans(x,survival_data_u,gene_data_u,prognostic_variable_d_u,cox_formula_u,ngroups_u) })
-		parallel::stopCluster(cl)
-	} else {
-		oo=parallel::mclapply(gi,function(x){constru_single_kmeans(x,survival_data,gene_data,prognostic_variable_d,cox_formula,ngroups)} ,mc.cores=ncores)
-	}
-	oo=t(as.data.frame(oo))
-	rownames(oo)=gi
-	return(oo)
-}
-
-#' constru_Mclust
-#'
-#' Cox regression after separating prognistic variable by gene expression tertiles
-#' @param survival_data A data frame with the samples as rows and survival time and event as columns.
-#' @param gene_data A data frame sample names as columns and gene expression as rows.
-#' @param prognostic_variable_d A vector with the prognostic variable data. It should be of the same length and order as the row of the survival data.
-#' @param cox_formula Formula used for cox regression. Example: 
-#' \itemize{
-#'   \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable \cr
-#' }
-#'   If additional prognostic factors need to be added to the model, add it as a column in the survival data and use its column name in the formula. Example:
-#' \itemize{
-#'   \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable + AGE \cr
-#' }
-#'   The program will automatically add the interaction term prognostic_variable:gene_data to the formula
-#' @param ncores The number of cores used during multithreading.
-#' @return a table with columns:
-#' \itemize{
-#'   \item mean - gene expression mean
-#'   \item P5\% - 5\% confidence interval of the gene expression
-#'   \item P95\% - 95\% confidence interval of the gene expression
-#'   \item Diff P95\%_5\% - difference between the 95\% and 5\% confidence interval
-#'   \item R - pearson correlation between the gene expression and prognostic variable
-#'   \item nGroups - number of groups found
-#'   \item PS1 - max parity score 1
-#'   \item PS1_max_group - group used to generate PS1
-#'   \item PS1_min_group - group used to generate PS1
-#'   \item PS2 - max parity score 2
-#'   \item PS2_max_group - group used to generate PS2
-#'   \item PS2_min_group - group used to generate PS2
-#'   \item PS3 - max parity score 3
-#'   \item PS3_max_group - group used to generate PS3
-#'   \item PS3_min_group - group used to generate PS3
-#'   \item All_Pval - pvalues of each group
-#'   \item All_HR - Hazard ratio of each group
-#'   \item sample_names - for each sample, a column will be used to indicate which group the sample belongs to
-#'   \item warnings - 
-#' }
-#' @export
-constru_Mclust<-function(survival_data, gene_data, prognostic_variable_d,cox_formula,ncores){
-	suppressMessages(require(parallel))
-	gi=rownames(gene_data)
-	oo=NULL
-	if( Sys.info()[['sysname']] == 'Windows' ){
-		survival_data_u=survival_data
-		gene_data_u=gene_data
-		prognostic_variable_d_u=prognostic_variable_d
-		cox_formula_u=cox_formula
-		cl <- parallel::makeCluster(ncores)
-		parallel::clusterExport(cl, varlist=c("categorize_tertiles","constru_single_Mclust","survival_data_u","gene_data_u","prognostic_variable_d_u","cox_formula_u"))
-		parallel::clusterEvalQ(cl, { library(survival); library(survminer); library(parallel); library(mclust); })
-		oo=parallel::parLapply(cl,gi,function(x){ constru_single_Mclust(x,survival_data_u,gene_data_u,prognostic_variable_d_u,cox_formula_u) })
-		parallel::stopCluster(cl)
-	} else {
-		oo=parallel::mclapply(gi,function(x){constru_single_Mclust(x,survival_data,gene_data,prognostic_variable_d,cox_formula)} ,mc.cores=ncores)
-	}
-	oo=t(as.data.frame(oo))
-	rownames(oo)=gi
-	return(oo)
-}
-
+#
+##' constru_kmeans
+##'
+##' Cox regression after separating prognistic variable by gene expression tertiles
+##' @param survival_data A data frame with the samples as rows and survival time and event as columns.
+##' @param gene_data A data frame sample names as columns and gene expression as rows.
+##' @param prognostic_variable_d A vector with the prognostic variable data. It should be of the same length and order as the row of the survival data.
+##' @param cox_formula Formula used for cox regression. Example: 
+##' \itemize{
+##'   \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable \cr
+##' }
+##'   If additional prognostic factors need to be added to the model, add it as a column in the survival data and use its column name in the formula. Example:
+##' \itemize{
+##'   \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable + AGE \cr
+##' }
+##'   The program will automatically add the interaction term prognostic_variable:gene_data to the formula
+##' @param ncores The number of cores used during multithreading.
+##' @param ngroups The number of clusters k-means will find
+##' @return a table with columns:
+##' \itemize{
+##'   \item mean - gene expression mean
+##'   \item P5\% - 5\% confidence interval of the gene expression
+##'   \item P95\% - 95\% confidence interval of the gene expression
+##'   \item Diff P95\%_5\% - difference between the 95\% and 5\% confidence interval
+##'   \item R - pearson correlation between the gene expression and prognostic variable
+##'   \item nGroups - number of groups found
+##'   \item PS1 - max parity score 1
+##'   \item PS1_max_group - group used to generate PS1
+##'   \item PS1_min_group - group used to generate PS1
+##'   \item PS2 - max parity score 2
+##'   \item PS2_max_group - group used to generate PS2
+##'   \item PS2_min_group - group used to generate PS2
+##'   \item PS3 - max parity score 3
+##'   \item PS3_max_group - group used to generate PS3
+##'   \item PS3_min_group - group used to generate PS3
+##'   \item All_Pval - pvalues of each group
+##'   \item All_HR - Hazard ratio of each group
+##'   \item sample_names - for each sample, a column will be used to indicate which group the sample belongs to
+##'   \item warnings - 
+##' }
+##' @export
+#constru_kmeans<-function(survival_data, gene_data, prognostic_variable_d,cox_formula,ncores,ngroups=3){
+#	suppressMessages(require(parallel))
+#	gi=rownames(gene_data)
+#	oo=NULL
+#	if( Sys.info()[['sysname']] == 'Windows' ){
+#		survival_data_u=survival_data
+#		gene_data_u=gene_data
+#		prognostic_variable_d_u=prognostic_variable_d
+#		cox_formula_u=cox_formula
+#		cl <- parallel::makeCluster(ncores)
+#		parallel::clusterExport(cl, varlist=c("categorize_tertiles","constru_single_kmeans","survival_data_u","gene_data_u","prognostic_variable_d_u","cox_formula_u"))
+#		parallel::clusterEvalQ(cl, { library(survival); library(survminer); library(parallel); library(mclust); })
+#		oo=parallel::parLapply(cl,gi,function(x){ constru_single_kmeans(x,survival_data_u,gene_data_u,prognostic_variable_d_u,cox_formula_u,ngroups_u) })
+#		parallel::stopCluster(cl)
+#	} else {
+#		oo=parallel::mclapply(gi,function(x){constru_single_kmeans(x,survival_data,gene_data,prognostic_variable_d,cox_formula,ngroups)} ,mc.cores=ncores)
+#	}
+#	oo=t(as.data.frame(oo))
+#	rownames(oo)=gi
+#	return(oo)
+#}
+#
+##' constru_Mclust
+##'
+##' Cox regression after separating prognistic variable by gene expression tertiles
+##' @param survival_data A data frame with the samples as rows and survival time and event as columns.
+##' @param gene_data A data frame sample names as columns and gene expression as rows.
+##' @param prognostic_variable_d A vector with the prognostic variable data. It should be of the same length and order as the row of the survival data.
+##' @param cox_formula Formula used for cox regression. Example: 
+##' \itemize{
+##'   \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable \cr
+##' }
+##'   If additional prognostic factors need to be added to the model, add it as a column in the survival data and use its column name in the formula. Example:
+##' \itemize{
+##'   \item Surv( OS_TIME , OS_Event ) ~ prognostic_variable + AGE \cr
+##' }
+##'   The program will automatically add the interaction term prognostic_variable:gene_data to the formula
+##' @param ncores The number of cores used during multithreading.
+##' @return a table with columns:
+##' \itemize{
+##'   \item mean - gene expression mean
+##'   \item P5\% - 5\% confidence interval of the gene expression
+##'   \item P95\% - 95\% confidence interval of the gene expression
+##'   \item Diff P95\%_5\% - difference between the 95\% and 5\% confidence interval
+##'   \item R - pearson correlation between the gene expression and prognostic variable
+##'   \item nGroups - number of groups found
+##'   \item PS1 - max parity score 1
+##'   \item PS1_max_group - group used to generate PS1
+##'   \item PS1_min_group - group used to generate PS1
+##'   \item PS2 - max parity score 2
+##'   \item PS2_max_group - group used to generate PS2
+##'   \item PS2_min_group - group used to generate PS2
+##'   \item PS3 - max parity score 3
+##'   \item PS3_max_group - group used to generate PS3
+##'   \item PS3_min_group - group used to generate PS3
+##'   \item All_Pval - pvalues of each group
+##'   \item All_HR - Hazard ratio of each group
+##'   \item sample_names - for each sample, a column will be used to indicate which group the sample belongs to
+##'   \item warnings - 
+##' }
+##' @export
+#constru_Mclust<-function(survival_data, gene_data, prognostic_variable_d,cox_formula,ncores){
+#	suppressMessages(require(parallel))
+#	gi=rownames(gene_data)
+#	oo=NULL
+#	if( Sys.info()[['sysname']] == 'Windows' ){
+#		survival_data_u=survival_data
+#		gene_data_u=gene_data
+#		prognostic_variable_d_u=prognostic_variable_d
+#		cox_formula_u=cox_formula
+#		cl <- parallel::makeCluster(ncores)
+#		parallel::clusterExport(cl, varlist=c("categorize_tertiles","constru_single_Mclust","survival_data_u","gene_data_u","prognostic_variable_d_u","cox_formula_u"))
+#		parallel::clusterEvalQ(cl, { library(survival); library(survminer); library(parallel); library(mclust); })
+#		oo=parallel::parLapply(cl,gi,function(x){ constru_single_Mclust(x,survival_data_u,gene_data_u,prognostic_variable_d_u,cox_formula_u) })
+#		parallel::stopCluster(cl)
+#	} else {
+#		oo=parallel::mclapply(gi,function(x){constru_single_Mclust(x,survival_data,gene_data,prognostic_variable_d,cox_formula)} ,mc.cores=ncores)
+#	}
+#	oo=t(as.data.frame(oo))
+#	rownames(oo)=gi
+#	return(oo)
+#}
+#
