@@ -26,7 +26,7 @@ PS3=
 
 The parity score is used to rank the genes to distinguish the largest difference between lower (T1) or upper (T3) tertiles with respect to the statistical power of the prognostic variable. The ranked genes can then be assigned percentile ranks as a function of all genes used in the analysis, thus allowing a standardized approach for comparing genes across different datasets. A larger the difference between ranks, the greater the difference between T1 and T3 with respect to prognostic variable significance and effect size.
  
-Parity score PS1 is the algorithm used to rank genes in the published article: _A patient stratification signature mirrors the immunogenic potential of high grade serous ovarian cancers. [Journal](link)_. See the article for methods on selecting genes by reproducibility of parity scores, and the establishment of gene signatures derived from selected genes.
+Parity score PS1 is the algorithm used to rank genes in the published article: _A patient stratification signature mirrors the immunogenic potential of high grade serous ovarian cancers. [Journal of Translational Medicine](https://doi.org/10.1186/s12967-024-05846-9)_. See the article for methods on selecting genes by reproducibility of parity scores, and the establishment of gene signatures derived from selected genes.
 
 **Caveats**
 
@@ -106,5 +106,5 @@ output2=constru_continuous(survival_data, gene_data, prognostic_variable_d,cox_f
 
 ### Citation
 
-**_Laurel K. Berry, Ashok K. Pullikuth, Kristen L. Stearns, Yuezhu Wang, Calvin J. Wagner, Jeff W. Chou, Janelle P. Darby, Michael G. Kelly, Raghvendra Mall, Ming Leung, Julia Chifman and Lance D. Miller. 2024. A patient stratification signature mirrors the immunogenic potential of high grade serous ovarian cancers. [Journal](link). PMID: [number](link)_**
+**_Laurel K. Berry, Ashok K. Pullikuth, Kristen L. Stearns, Yuezhu Wang, Calvin J. Wagner, Jeff W. Chou, Janelle P. Darby, Michael G. Kelly, Raghvendra Mall, Ming Leung, Julia Chifman and Lance D. Miller. 2024. A patient stratification signature mirrors the immunogenic potential of high grade serous ovarian cancers. [Journal of Translational Medicine](https://doi.org/10.1186/s12967-024-05846-9). PMID: [39568014](https://pubmed.ncbi.nlm.nih.gov/39568014/)_**
 
